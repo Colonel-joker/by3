@@ -45,6 +45,10 @@ link_directories(${LIB_DIR})
 
 # project include directories
 include_directories(src)
+#1.3
+include_directories(src/art)
+#2.1
+include_directories(src/raw)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${INC_DIR})
 
@@ -55,6 +59,14 @@ file(GLOB_RECURSE CC_SOURCES "src/*.cc")
 set(SOURCES ${C_SOURCES} ${CXX_SOURCES} ${CC_SOURCES}
             ${FLEX_Lexer_OUTPUTS} ${BISON_Parser_OUTPUT_SOURCE})
 
+#1.3 Add art source files
+file(GLOB_RECURSE ART_SOURCES "src/art/*.cpp")
+set(SOURCES ${C_SOURCES} ${CXX_SOURCES} ${CC_SOURCES} ${ART_SOURCES}
+            ${FLEX_Lexer_OUTPUTS} ${BISON_Parser_OUTPUT_SOURCE})
+    #2.1  
+file(GLOB_RECURSE raw_SOURCES "src/raw/*.cpp")
+set(SOURCES ${C_SOURCES} ${CXX_SOURCES} ${CC_SOURCES} ${raw_SOURCES}
+            ${FLEX_Lexer_OUTPUTS} ${BISON_Parser_OUTPUT_SOURCE})
 # executable
 add_executable(compiler ${SOURCES})
 set_target_properties(compiler PROPERTIES C_STANDARD 11 CXX_STANDARD 17)
