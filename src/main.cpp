@@ -43,10 +43,10 @@ if(strcmp(mode,"-koopa")==0){
     ast->Dump();
     fclose(stdout);
   }else if(strcmp(mode,"-riscv")==0){
-    freopen("qaz.tmp","w",stdout);
+    freopen("qaz.txt","w",stdout);
     ast->Dump();
     fclose(stdout);
-    FILE *fp=fopen("qaz.tmp","r");
+    FILE *fp=fopen("qaz.txt","r");
     char *buf=(char *)malloc(100000);
     fread(buf, 1, 100000, fp);
     freopen(output,"w",stdout);

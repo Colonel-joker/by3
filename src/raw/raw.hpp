@@ -35,7 +35,11 @@ void Visit(const koopa_raw_program_t &program) {
   // 访问所有全局变量
   Visit(program.values);
   // 访问所有函数
-  Visit(program.funcs);
+  for (size_t i = 0; i < program.funcs.len; ++i) {
+      assert(program.funcs.kind == KOOPA_RSIK_FUNCTION);
+      Visit((koopa_raw_function_t)program.funcs.buffer[i]);
+  }
+
 }
 
 // 访问 raw slice
@@ -69,15 +73,19 @@ void Visit(const koopa_raw_function_t &func) {
   printf("  .globl %s\n",func->name+1);
   printf("%s:\n",func->name+1);
   // 访问所有基本块
-  Visit(func->bbs);
+  for (size_t j = 0; j < func->bbs.len; ++j) {
+    Visit((koopa_raw_basic_block_t)func->bbs.buffer[j]);
+  }
 }
 
 // 访问基本块
 void Visit(const koopa_raw_basic_block_t &bb) {
-  // 执行一些其他的必要操作
+  for (size_t k = 0; k < bb->insts.len; ++k){
+     // 访问所有指令
+    Visit((koopa_raw_value_t)bb->insts.buffer[k]);
+  }
   
-  // 访问所有指令
-  Visit(bb->insts);
+ 
 }
 
 // 访问指令
