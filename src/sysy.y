@@ -118,7 +118,7 @@ Stmt
     }
   ;
 Exp 
-    : UnaryExp {
+    : LOrExp {
         auto add_exp = std::unique_ptr<BaseAST>($1);
         $$ = new ExpAST(add_exp);
     }
@@ -171,24 +171,44 @@ MulExp
         auto unary_exp = std::unique_ptr<BaseAST>($1);
         $$ = new MulExpAST(unary_exp);
     }
-    | MulExp MULOP UnaryExp {
+    | MulExp '*' UnaryExp {
         auto left_exp = std::unique_ptr<BaseAST>($1);
-        auto op = std::unique_ptr<std::string>($2);
+        string op = "*";
         auto right_exp = std::unique_ptr<BaseAST>($3);
-        $$ = new MulExpAST(left_exp, op->c_str(), right_exp);
-    };
+        $$ = new MulExpAST(left_exp, op.c_str(), right_exp);
+    }
+    | MulExp '/' UnaryExp {
+        auto left_exp = std::unique_ptr<BaseAST>($1);
+        string op = "/";
+        auto right_exp = std::unique_ptr<BaseAST>($3);
+        $$ = new MulExpAST(left_exp, op.c_str(), right_exp);
+    }
+    | MulExp '%' UnaryExp {
+        auto left_exp = std::unique_ptr<BaseAST>($1);
+        string op = "%";
+        auto right_exp = std::unique_ptr<BaseAST>($3);
+        $$ = new MulExpAST(left_exp, op.c_str(), right_exp);
+    }
+    ;
 
 AddExp
     : MulExp {
         auto mul_exp = std::unique_ptr<BaseAST>($1);
         $$ = new MulExpAST(mul_exp);
     }
-    | AddExp ADDOP MulExp {
+    | AddExp '+' MulExp {
         auto left_exp = std::unique_ptr<BaseAST>($1);
-        auto op = std::unique_ptr<std::string>($2);
+        string op ="+";
         auto right_exp = std::unique_ptr<BaseAST>($3);
-        $$ = new AddExpAST(left_exp, op->c_str(), right_exp);
+        $$ = new AddExpAST(left_exp, op.c_str(), right_exp);
+    }
+    |AddExp '-' MulExp {
+        auto left_exp = std::unique_ptr<BaseAST>($1);
+        string op = "-";
+        auto right_exp = std::unique_ptr<BaseAST>($3);
+        $$ = new AddExpAST(left_exp, op.c_str(), right_exp);
     };
+
 
 RelExp
     : AddExp {
@@ -201,6 +221,19 @@ RelExp
         auto right_exp = std::unique_ptr<BaseAST>($3);
         $$ = new RelExpAST(left_exp, op->c_str(), right_exp);
     };
+    | RelExp '<' AddExp {
+        auto left_exp = std::unique_ptr<BaseAST>($1);
+        string op="<";
+        auto right_exp = std::unique_ptr<BaseAST>($3);
+        $$ = new RelExpAST(left_exp, op.c_str(), right_exp);
+    };
+    | RelExp '>' AddExp {
+        auto left_exp = std::unique_ptr<BaseAST>($1);
+        string op=">";
+        auto right_exp = std::unique_ptr<BaseAST>($3);
+        $$ = new RelExpAST(left_exp, op.c_str(), right_exp);
+    };
+    
 
 EqExp
     : RelExp {

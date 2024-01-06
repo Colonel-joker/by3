@@ -31,7 +31,7 @@ Hexadecimal   0[xX][0-9a-fA-F]+
 UnaryOperator \!|\+|\-
 AddOperator   \+|\-
 MulOperator   [\*/%]
-RelOperator   <|>|<=|>=
+RelOperator   <=|>=
 EqOperator    ==|\!=
 LAndOperator  &&
 LOrOperator   \|\|

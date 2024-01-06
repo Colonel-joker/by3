@@ -210,8 +210,8 @@ class MulExpAST : public BaseAST
 public:
     enum
     {
-        Primary,
-        Op
+        Primary,//UnaryExp | 
+        Op //MulExp ("*" | "/" | "%") UnaryExp;
     } type;
     std::string op;
     std::unique_ptr<BaseAST> leftExp; // may be primary
@@ -235,8 +235,57 @@ public:
         }
         else if(type==Op){//待定
             IR ret;
-            ret.koopaIR+=op;
-            return ret=rightExp->get_koopa();
+            IR l = leftExp->get_koopa();
+            IR r = rightExp->get_koopa();
+            ret.koopaIR = l.koopaIR;
+            ret.koopaIR += r.koopaIR;
+            int storeid = 0;
+            storeid = IR::registers;
+            // if (l.IRtype&&r.IRtype)
+            // {
+            //     ret.IRtype = IR::NUM;
+            //     ret.store = storeid;
+            //     if (op=="*")
+            //     {
+            //     ret.num=l.num*r.num;
+            //     }
+            //     else if(op=="/"){
+            //     ret.num=l.num/r.num;
+            //     }
+            //     else
+            //     {
+            //     ret.num=l.num%r.num;
+            //     }
+            //     return ret;
+            // }
+            IR::registers++;
+            ret.koopaIR = ret.koopaIR + "  %" + std::to_string(storeid);
+            if (op == "*")
+            {
+                ret.koopaIR += " = mul ";
+            }
+            else if (op == "/")
+                ret.koopaIR += " = div ";
+            else
+                ret.koopaIR += " = mod ";
+            if (l.IRtype == IR::EXP)
+            {
+                ret.koopaIR = ret.koopaIR + '%' + std::to_string(l.store);
+            }
+            else
+                ret.koopaIR = ret.koopaIR + std::to_string(l.num);
+            ret.koopaIR += ", ";
+            if (r.IRtype == IR::EXP)
+            {
+                ret.koopaIR = ret.koopaIR + '%' + std::to_string(r.store);
+            }
+            else
+                ret.koopaIR = ret.koopaIR + std::to_string(r.num);
+            ret.koopaIR += '\n';
+            ret.IRtype = IR::EXP;
+            ret.store = storeid;
+
+            return ret;
         }
     }
      int Cal() const override
@@ -263,7 +312,7 @@ public:
     {
         Primary,
         Op
-    } type;
+    } type;  //MulExp | AddExp ("+" | "-") MulExp;
     std::string op;
     std::unique_ptr<BaseAST> leftExp; // may be primary
     std::unique_ptr<BaseAST> rightExp;
@@ -282,13 +331,65 @@ public:
     }
     IR get_koopa()const override{
         if(type==Primary){
-            leftExp->get_koopa();
+            return leftExp->get_koopa();
         }
-        else if(type==Op){//待定
-            cout<<op;
-            rightExp->get_koopa();
+        else if(type==Op){//
+            IR ret,l,r;
+            l=leftExp->get_koopa();
+            r=rightExp->get_koopa();
+            ret.koopaIR=l.koopaIR;
+            ret.koopaIR+=r.koopaIR;
+            int storeid =IR::registers;
+            // if (l.IRtype&&r.IRtype)//都不是表达式
+            //  {
+            //     ret.IRtype = 1;
+            //     ret.store = storeid;
+            //     if (op=="+")
+            //     {
+            //          ret.num=l.num+r.num;
+            //     }
+            //     else{
+            //         ret.num=l.num-r.num;
+            //     }
+            //     return ret;
+            // }
+        IR::registers++;
+        ret.koopaIR = ret.koopaIR + "  %" + std::to_string(storeid);
+        if (op == "+")
+        {
+            ret.koopaIR += " = add ";
+        }
+        else
+            ret.koopaIR += " = sub ";
+        if (l.IRtype == IR::EXP)
+        {
+            ret.koopaIR = ret.koopaIR + '%' + std::to_string(l.store);
+        }
+        else
+            ret.koopaIR = ret.koopaIR + std::to_string(l.num);
+        ret.koopaIR += ", ";
+        if (r.IRtype == IR::EXP)
+        {
+            ret.koopaIR = ret.koopaIR + '%' + std::to_string(r.store);
+        }
+        else
+            ret.koopaIR = ret.koopaIR + std::to_string(r.num);
+        ret.koopaIR += '\n';
+        ret.IRtype = IR::EXP;
+        ret.store = storeid;
+        if (op=="+")
+        {
+            ret.num=l.num+r.num;
+        }
+        else{
+            ret.num=l.num-r.num;
+        }
+        return ret;
         }
     }
+
+    
+    
    int Cal() const override
     {
         if (type == Primary)
@@ -328,11 +429,72 @@ public:
     }
     IR get_koopa()const override{
         if(type==Primary){
-            leftExp->get_koopa();
+            return leftExp->get_koopa();
         }
         else if(type==Op){//待定
-            cout<<op;
-            rightExp->get_koopa();
+            IR ret;
+            IR l = leftExp->get_koopa();
+            IR r = rightExp->get_koopa();
+            ret.koopaIR = l.koopaIR;
+            ret.koopaIR += r.koopaIR;
+            int storeid = 0;
+            storeid = IR::registers;
+            // if (l.IRtype&&r.IRtype)
+            // {
+            //     ret.IRtype = 1;
+            //     ret.store = storeid;
+            //     if (op == "<=")
+            //     {
+            //     ret.num = l.num<=r.num;
+            //     }
+            //     else if (op == ">=")
+            //     ret.num = l.num>=r.num;
+            //     else if (op == "<")
+            //     ret.num=l.num<r.num;
+            //     else
+            //     ret.num=l.num>r.num;
+            //     return ret;
+            // }
+            IR::registers++;
+            ret.koopaIR = ret.koopaIR + "  %" + std::to_string(storeid);
+            if (op == "<=")
+            {
+                ret.koopaIR += " = le ";
+            }
+            else if (op == ">=")
+                ret.koopaIR += " = ge ";
+            else if (op == "<")
+                ret.koopaIR += " = lt ";
+            else
+                ret.koopaIR += " = gt ";
+            if (l.IRtype == IR::EXP)
+            {
+                ret.koopaIR = ret.koopaIR + '%' + std::to_string(l.store);
+            }
+            else
+                ret.koopaIR = ret.koopaIR + std::to_string(l.num);
+            ret.koopaIR += ", ";
+            if (r.IRtype == IR::EXP)
+            {
+                ret.koopaIR = ret.koopaIR + '%' + std::to_string(r.store);
+            }
+            else
+                ret.koopaIR = ret.koopaIR + std::to_string(r.num);
+            ret.koopaIR += '\n';
+            ret.IRtype = IR::EXP;
+            ret.store = storeid;
+            if (op == "<=")
+            {
+                ret.num = l.num<=r.num;
+            }
+            else if (op == ">=")
+                ret.num = l.num>=r.num;
+            else if (op == "<")
+                ret.num=l.num<r.num;
+            else
+                ret.num=l.num>r.num;
+
+            return ret;
         }
     }
      int Cal() const override
@@ -379,11 +541,63 @@ public:
     }
     IR get_koopa()const override{
         if(type==Primary){
-            leftExp->get_koopa();
+            return leftExp->get_koopa();
         }
         else if(type==Op){//待定
-            cout<<op;
-            rightExp->get_koopa();
+            IR ret;
+            IR l = leftExp->get_koopa();
+            IR r = rightExp->get_koopa();
+            ret.koopaIR = l.koopaIR;
+            ret.koopaIR += r.koopaIR;
+            int storeid = 0;
+            storeid = IR::registers;
+            // if (l.IRtype&&r.IRtype)
+            // {
+            //     ret.IRtype = 1;
+            //     ret.store = storeid;
+            //     if (op=="==")
+            //     {
+            //     ret.num=l.num==r.num;
+            //     }
+            //     else
+            //     {
+            //     ret.num=l.num!=r.num;
+            //     }
+            //     return ret;
+            // }
+            IR::registers++;
+            ret.koopaIR = ret.koopaIR + "  %" + std::to_string(storeid);
+            if (op == "==")
+            {
+                ret.koopaIR += " = eq ";
+            }
+            else
+                ret.koopaIR += " = ne ";
+            if (l.IRtype == IR::EXP)
+            {
+                ret.koopaIR = ret.koopaIR + '%' + std::to_string(l.store);
+            }
+            else
+                ret.koopaIR = ret.koopaIR + std::to_string(l.num);
+            ret.koopaIR += ", ";
+            if (r.IRtype == IR::EXP)
+            {
+                ret.koopaIR = ret.koopaIR + '%' + std::to_string(r.store);
+            }
+            else
+                ret.koopaIR = ret.koopaIR + std::to_string(r.num);
+            ret.koopaIR += '\n';
+            ret.IRtype = IR::EXP;
+            ret.store = storeid;
+            if (op=="==")
+            {
+                ret.num=l.num==r.num;
+            }
+            else
+            {
+                ret.num=l.num!=r.num;
+            }
+        return ret;
         }
     }
     int Cal() const override
@@ -425,13 +639,60 @@ public:
     }
     IR get_koopa()const override{
         if(type==Primary){
-            leftExp->get_koopa();
+            return leftExp->get_koopa();
         }
         else if(type==Op){//待定
-            cout<<op;
-            rightExp->get_koopa();
+            IR ret,l,r;
+            l = leftExp->get_koopa();
+            r = rightExp->get_koopa();
+            ret.koopaIR = l.koopaIR;
+            ret.koopaIR += r.koopaIR;
+            int storeid = 0;
+            int lid, rid;
+            lid = IR::registers;
+            // if (l.IRtype&&r.IRtype)
+            // {
+            //     ret.IRtype = 1;
+            //     ret.store = storeid;
+            //     ret.num=l.num&&r.num;
+            //     return ret;
+            // }
+            IR::registers++;
+            ret.koopaIR = ret.koopaIR + "  %" + std::to_string(lid) + " = ne ";
+            ret.koopaIR = ret.koopaIR + std::to_string(0) + ", ";
+            if (l.IRtype == IR::EXP)
+            {
+                ret.koopaIR = ret.koopaIR + '%' + std::to_string(l.store);
+            }
+            else
+                ret.koopaIR = ret.koopaIR + std::to_string(l.num);
+            ret.koopaIR += '\n';
+            rid = IR::registers;
+            IR::registers++;
+            ret.koopaIR = ret.koopaIR + "  %" + std::to_string(rid) + " = ne ";
+            ret.koopaIR = ret.koopaIR + std::to_string(0) + ", ";
+            if (r.IRtype == IR::EXP)
+            {
+                ret.koopaIR = ret.koopaIR + '%' + std::to_string(r.store);
+            }
+            else
+                ret.koopaIR = ret.koopaIR + std::to_string(r.num);
+            ret.koopaIR += '\n';
+            storeid = IR::registers;
+            IR::registers++;
+            ret.koopaIR = ret.koopaIR + "  %" + std::to_string(storeid) + " = and ";
+            ret.koopaIR = ret.koopaIR + '%' + std::to_string(lid);
+            ret.koopaIR += ", ";
+            ret.koopaIR = ret.koopaIR + '%' + std::to_string(rid);
+            ret.koopaIR += '\n';
+            ret.IRtype = IR::EXP;
+            ret.store = storeid;
+            ret.num=l.num&&r.num;
+            return ret;
         }
+
     }
+    
    int Cal() const override
     {
         if (type == Primary)
@@ -469,14 +730,60 @@ class LOrExpAST : public BaseAST
     }
     IR get_koopa()const override{
         if(type==Primary){
-            leftExp->get_koopa();
+            return leftExp->get_koopa();
         }
         else if(type==Op){//待定
-            leftExp->get_koopa();
-            cout<<op;
-            rightExp->get_koopa();
+            IR ret,l,r;
+            l = leftExp->get_koopa();
+            r = rightExp->get_koopa();
+            ret.koopaIR = l.koopaIR;
+            ret.koopaIR += r.koopaIR;
+            int storeid = 0;
+            int lid, rid;
+            lid = IR::registers;
+            // if (l.IRtype&&r.IRtype)
+            // {
+            //     ret.IRtype = 1;
+            //     ret.store = storeid;
+            //     ret.num=l.num||r.num;
+            //     return ret;
+            // }
+            IR::registers++;
+            ret.koopaIR = ret.koopaIR + "  %" + std::to_string(lid) + " = ne ";
+            ret.koopaIR = ret.koopaIR + std::to_string(0) + ", ";
+            if (l.IRtype == IR::EXP)
+            {
+                ret.koopaIR = ret.koopaIR + '%' + std::to_string(l.store);
+            }
+            else
+                ret.koopaIR = ret.koopaIR + std::to_string(l.num);
+            ret.koopaIR += '\n';
+            rid = IR::registers;
+            IR::registers++;
+            ret.koopaIR = ret.koopaIR + "  %" + std::to_string(rid) + " = ne ";
+            ret.koopaIR = ret.koopaIR + std::to_string(0) + ", ";
+            if (r.IRtype == IR::EXP)
+            {
+                ret.koopaIR = ret.koopaIR + '%' + std::to_string(r.store);
+            }
+            else
+                ret.koopaIR = ret.koopaIR + std::to_string(r.num);
+            ret.koopaIR += '\n';
+            storeid = IR::registers;
+            IR::registers++;
+            ret.koopaIR = ret.koopaIR + "  %" + std::to_string(storeid) + " = or ";
+            ret.koopaIR = ret.koopaIR + '%' + std::to_string(lid);
+            ret.koopaIR += ", ";
+            ret.koopaIR = ret.koopaIR + '%' + std::to_string(rid);
+            ret.koopaIR += '\n';
+            ret.IRtype = IR::EXP;
+            ret.store = storeid;
+            ret.num=l.num||r.num;
+            return ret;
         }
+
     }
+    
      int Cal() const override
     {
         if (type == Primary)
