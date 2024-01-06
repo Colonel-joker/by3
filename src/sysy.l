@@ -27,6 +27,15 @@ Decimal       [1-9][0-9]*
 Octal         0[0-7]*
 Hexadecimal   0[xX][0-9a-fA-F]+
 
+/* op */
+UnaryOperator \!|\+|\-
+AddOperator   \+|\-
+MulOperator   [\*/%]
+RelOperator   <|>|<=|>=
+EqOperator    ==|\!=
+LAndOperator  &&
+LOrOperator   \|\|
+
 %%
 
 {WhiteSpace}    { /* 忽略, 不做任何操作 */ }
@@ -34,6 +43,14 @@ Hexadecimal   0[xX][0-9a-fA-F]+
 {BlockComment}  { /* 忽略, 不做任何操作 */ }
 "int"           { return INT; }
 "return"        { return RETURN; }
+"const"         { return CONST; }
+"if"            { return IF; }
+"else"          { return ELSE; }
+"while"         { return WHILE; }
+"break"         { return BREAK; }
+"continue"      { return CONTINUE; }
+"void"          { return VOID; }
+
 
 {Identifier}    { yylval.str_val = new string(yytext); return IDENT; }
 
@@ -43,4 +60,11 @@ Hexadecimal   0[xX][0-9a-fA-F]+
 
 .               { return yytext[0]; }
 
+{UnaryOperator}      { yylval.str_val = new string(yytext); return UNARYOP; }
+{AddOperator}      { yylval.str_val = new string(yytext); return ADDOP; }
+{MulOperator}      { yylval.str_val = new string(yytext); return MULOP; }
+{RelOperator}      { yylval.str_val = new string(yytext); return RELOP; }
+{EqOperator}      { yylval.str_val = new string(yytext); return EQOP; }
+{LAndOperator}      { yylval.str_val = new string(yytext); return LANDOP; }
+{LOrOperator}      { yylval.str_val = new string(yytext); return LOROP; }
 %%

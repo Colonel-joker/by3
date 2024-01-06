@@ -33,20 +33,22 @@ int main(int argc, const char *argv[]) {
   // 调用 parser 函数, parser 函数会进一步调用 lexer 解析输入文件的
  unique_ptr<BaseAST> ast;
   auto ret = yyparse(ast);
-  assert(!ret);
-    
+  if (ret != 0) {
+    cerr << "Parsing failed with return code: " << ret << endl;
+    assert(!ret);
+  }  
 
   // 输出解析得到的 AST, 其实就是个字符串
 // dump AST
 if(strcmp(mode,"-koopa")==0){
     freopen(output,"w",stdout);
-    ast->Dump();
+    cout<<ast->get_koopa().koopaIR ;
     fclose(stdout);
   }else if(strcmp(mode,"-riscv")==0){
-    freopen("qaz.txt","w",stdout);
-    ast->Dump();
+    freopen("qaz.tmp","w",stdout);
+    cout<<ast->get_koopa().koopaIR ;
     fclose(stdout);
-    FILE *fp=fopen("qaz.txt","r");
+    FILE *fp=fopen("qaz.tmp","r");
     char *buf=(char *)malloc(100000);
     fread(buf, 1, 100000, fp);
     freopen(output,"w",stdout);
