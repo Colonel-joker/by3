@@ -7,6 +7,58 @@
 #include <cassert>
 #include "base_ast.hpp"
 using namespace std;
+//lv4
+
+class LValAST : public BaseAST
+{
+  
+public:
+    enum 
+    {
+        NUM,
+        ARR
+    }type;
+    std::string ident;
+    std::vector<std::unique_ptr<BaseAST>> idx;
+    LValAST(const char *_name) : ident(_name) 
+    {
+        type = NUM;
+    }
+    LValAST(const char *_name, std::vector<BaseAST*> &_idx) : ident(_name)
+    {
+        type = ARR;
+        for(auto &i : _idx)
+            idx.emplace_back(i);
+            
+    } 
+    IR get_koopa()  override{
+        IR ret;
+        switch (type)
+        {
+        case NUM:
+            ret.get_IRtype_fromVal(IR::curbmap->find(ident)->second.type);
+            if(ret.IRtype==IR::ARR)
+                ret.num=0;
+            break;
+        
+        default:
+            break;
+        }
+        return ret;
+    }
+};
+
+
+
+
+
+
+
+
+
+
+
+//lv3
 class ExpAST : public BaseAST
 {
 public:
@@ -16,13 +68,9 @@ public:
     {
         unaryExp = std::move(_unaryExp);
     }
-    IR get_koopa()const override
+    IR get_koopa() override
     {
         return unaryExp->get_koopa();
-    }
-    int Cal() const override
-    {
-        return unaryExp->Cal();
     }
     // void DumpAST()const override{
     //     unaryExp->DumpAST();
@@ -34,36 +82,77 @@ class PrimaryExpAST:public BaseAST
             enum
         {
             EXP,
-            NUM
+            NUM,
+            LVAL
         } type;
         unique_ptr<BaseAST> newexp;
+        unique_ptr<BaseAST> lval;
         int number;
         PrimaryExpAST(std::unique_ptr<BaseAST> &_exp)
         {
         newexp = std::move(_exp);
         type=EXP;
         }
+        PrimaryExpAST(std::unique_ptr<BaseAST> &_exp,int l)
+        {
+        lval = std::move(_exp);
+        type=LVAL;
+        }
         PrimaryExpAST(int n):number(n){
             type =NUM;
-            }
-        IR get_koopa()const override
+        }
+        IR get_koopa()override
         {   IR ret;
             switch (type)
             {
-            case EXP:
-                 ret =newexp->get_koopa();
-                 ret.IRtype=IR::EXP;
+            case EXP:{
+                ret =newexp->get_koopa();
+                ret.IRtype=IR::EXP;
                 return ret;
                 break;
-            case NUM:
+            }
+            case NUM:{
                 ret.IRtype=IR::NUM;
                 ret.num=number;
                 return ret;
-              break;
+                break;
+            }
+            case LVAL:{
+                LValAST* var=(LValAST*)(lval.get());
+                std::string ident=var->ident;
+                Val V=IR::curbmap->find(ident)->second;
+                switch (V.type)
+                {
+                case Val::VAR:{
+                    ret.IRtype = IR::EXP;
+                    ret.num = V.num;
+                    ret.store = IR::registers;
+                    IR::registers++;
+                    int index=IR::curbmap->find(ident)->second.index;
+                    if (index!=-1)
+                        ret.koopaIR="  %"+std::to_string(ret.store)+" = load @"+ident+"_"+std::to_string(index)+"\n";
+                    else
+                        ret.koopaIR="  %"+std::to_string(ret.store)+" = load %"+ident+"\n";
+                    break;
+                }
+                    
+                case Val::CONST:{
+                    ret.IRtype = IR::NUM;
+                    ret.num = V.num;
+                    break;
+                }
+                default://数组
+                    IR::arraydefing=0;
+                    break;
+                }
+                break;
+            }
+                
             default:
                 break;
-            
+                
             }
+            return ret;
            
         }
           int Cal() const override
@@ -103,7 +192,7 @@ public:
    // {
    //     type = Function;
     //}
-     IR get_koopa()const override
+     IR get_koopa()override
     {   
         IR ret,pre;
         switch (type)
@@ -229,12 +318,13 @@ public:
         op = std::string(_op);
         rightExp = std::move(_right_exp);
     }
-    IR get_koopa()const override{
+    IR get_koopa()override{
+        IR ret;
         if(type==Primary){
             return leftExp->get_koopa();
         }
         else if(type==Op){//待定
-            IR ret;
+            
             IR l = leftExp->get_koopa();
             IR r = rightExp->get_koopa();
             ret.koopaIR = l.koopaIR;
@@ -284,23 +374,22 @@ public:
             ret.koopaIR += '\n';
             ret.IRtype = IR::EXP;
             ret.store = storeid;
-
-            return ret;
+            if (op=="*")
+            {
+            ret.num=l.num*r.num;
+            }
+            else if(op=="/"){
+            ret.num=l.num/r.num;
+            }
+            else
+            {
+            ret.num=l.num%r.num;
+            }
+           
         }
+        return ret;
     }
-     int Cal() const override
-    {
-        if (type == Primary)
-            return leftExp->Cal();
-        int res = 0;
-        if (op == "*")
-            res = leftExp->Cal() * rightExp->Cal();
-        else if (op == "/")
-            res = leftExp->Cal() / rightExp->Cal();
-        else if (op == "%")
-            res = leftExp->Cal() % rightExp->Cal();
-        return res;
-    }
+   
    
 };
 
@@ -329,7 +418,7 @@ public:
         op = std::string(_op);
         rightExp = std::move(_right_exp);
     }
-    IR get_koopa()const override{
+    IR get_koopa()override{
         if(type==Primary){
             return leftExp->get_koopa();
         }
@@ -427,7 +516,7 @@ public:
         op = std::string(_op);
         rightExp = std::move(_right_exp);
     }
-    IR get_koopa()const override{
+    IR get_koopa() override{
         if(type==Primary){
             return leftExp->get_koopa();
         }
@@ -539,7 +628,7 @@ public:
         op = std::string(_op);
         rightExp = std::move(_right_exp);
     }
-    IR get_koopa()const override{
+    IR get_koopa()override{
         if(type==Primary){
             return leftExp->get_koopa();
         }
@@ -637,7 +726,7 @@ public:
         op = std::string(_op);
         rightExp = std::move(_right_exp);
     }
-    IR get_koopa()const override{
+    IR get_koopa()override{
         if(type==Primary){
             return leftExp->get_koopa();
         }
@@ -693,15 +782,6 @@ public:
 
     }
     
-   int Cal() const override
-    {
-        if (type == Primary)
-            return leftExp->Cal();
-        int res = 0;
-        if (op == "&&")
-            res = leftExp->Cal() && rightExp->Cal();
-        return res;
-    }
 };
 
 class LOrExpAST : public BaseAST
@@ -728,7 +808,7 @@ class LOrExpAST : public BaseAST
         op = std::string(_op);
         rightExp = std::move(_right_exp);
     }
-    IR get_koopa()const override{
+    IR get_koopa()override{
         if(type==Primary){
             return leftExp->get_koopa();
         }
@@ -741,13 +821,6 @@ class LOrExpAST : public BaseAST
             int storeid = 0;
             int lid, rid;
             lid = IR::registers;
-            // if (l.IRtype&&r.IRtype)
-            // {
-            //     ret.IRtype = 1;
-            //     ret.store = storeid;
-            //     ret.num=l.num||r.num;
-            //     return ret;
-            // }
             IR::registers++;
             ret.koopaIR = ret.koopaIR + "  %" + std::to_string(lid) + " = ne ";
             ret.koopaIR = ret.koopaIR + std::to_string(0) + ", ";
@@ -782,15 +855,5 @@ class LOrExpAST : public BaseAST
             return ret;
         }
 
-    }
-    
-     int Cal() const override
-    {
-        if (type == Primary)
-            return leftExp->Cal();
-        int res = 0;
-        if (op == "||")
-            res = leftExp->Cal() || rightExp->Cal();
-        return res;
     }
 };

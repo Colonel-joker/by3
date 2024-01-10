@@ -41,7 +41,8 @@ map<string,int> IR::constmap;
 map<string,int> IR::globalname;
 vector<int> IR::arraydef; 
 vector<int> IR::asize;
-
+blockmap bmap=blockmap();
+blockmap* IR::curbmap=&bmap;
 %}
 
 // 定义 parser 函数和错误处理函数的附加参数
@@ -69,11 +70,12 @@ vector<int> IR::asize;
 
 
 //非终结符
-%type <ast_val> FuncDef FuncType Block Stmt
-%type <int_val>  Number 
-%type <ast_val> Exp PrimaryExp UnaryExp MulExp AddExp RelExp EqExp LAndExp LOrExp
+%type <ast_val> FuncDef FuncType BType Block Stmt  LVal VarDecl VarDefs VarDef ConstDef ConstDecl BlockItems BlockItem Decl ConstDefs
+%type <int_val>  Number  
+%type <ast_val> Exp PrimaryExp UnaryExp MulExp AddExp RelExp EqExp LAndExp LOrExp 
 
 %%
+//CompUnit必须写在开头！！！！！
 CompUnit
   : FuncDef {
     auto comp_unit = make_unique<CompUnitAST>();
@@ -81,6 +83,140 @@ CompUnit
     ast = move(comp_unit);
   }
   ;
+
+//lv4  利用一一对应关系，funcType换成btype,ConstInitVal和constexp直接用exp
+Decl
+  : ConstDecl {
+    auto ast = new DeclAST();
+    ast->type=0;
+    ast->constdecl = std::unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  ;
+  | VarDecl {
+    auto ast = new DeclAST();
+    ast->type=1;
+    ast->vardecl = std::unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  ;
+
+
+ConstDecl
+  : CONST BType ConstDefs ';' {
+    auto ast = new ConstDeclAST();
+    ast->btype = std::unique_ptr<BaseAST>($2);
+    ast->constdefs = std::unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  ;
+
+
+
+ConstDefs : ConstDefs ',' ConstDef {
+    auto ast = new ConstDefsAST();
+    ast->type=0;
+    ast->constdefs=std::unique_ptr<BaseAST>($1);
+    ast->constdef=std::unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  | ConstDef {
+    auto ast = new ConstDefsAST();
+    ast->type=1;
+    ast->constdef=std::unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  ;
+
+  
+
+
+ConstDef
+    : IDENT '=' Exp {  
+        
+        auto exp = std::unique_ptr<BaseAST>($3);
+        $$ = new ConstDefAST($1->c_str(), exp);
+    }
+    ;
+
+
+
+VarDecl
+  : BType VarDefs ';' {
+    auto ast = new VarDeclAST();
+    ast->btype = std::unique_ptr<BaseAST>($1);
+    ast->vardefs = std::unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+  ;
+
+VarDefs
+  : VarDefs ',' VarDef {
+    auto ast = new VarDefsAST();
+    ast->type=0;
+    ast->vardefs=std::unique_ptr<BaseAST>($1);
+    ast->vardef=std::unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  | VarDef {
+    auto ast = new VarDefsAST();
+    ast->type=1;
+    ast->vardef=std::unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  ;
+
+
+
+VarDef
+    : IDENT {
+        $$=new VarDefAST($1->c_str(),0);
+    }
+    | IDENT '=' Exp {
+        auto exp = std::unique_ptr<BaseAST>($3);
+        $$=new VarDefAST($1->c_str(), exp,1);
+    }
+
+LVal
+    : IDENT {
+        $$ = new LValAST($1->c_str());
+    }
+    ;
+
+BlockItems : BlockItem {
+    auto ast = new BlockItemsAST();
+    ast->type=1;
+    ast->blockitem=std::unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | BlockItems BlockItem {
+    auto ast = new BlockItemsAST();
+    ast->type=0;
+    ast->blockitems=std::unique_ptr<BaseAST>($1);
+    ast->blockitem=std::unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+    ;
+
+BlockItem :  Decl {
+    auto ast = new BlockItemAST();
+    ast->type=0;
+    ast->decl = std::unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  ;
+  | Stmt {
+    auto ast = new BlockItemAST();
+    ast->type=1;
+    ast->stmt = std::unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  ;
+
+
+
+
+
 
 FuncDef
   : FuncType IDENT '(' ')' Block {
@@ -92,8 +228,6 @@ FuncDef
   }
   ;
 
-
-// 同上, 不再解释
 FuncType
   : INT {
         $$ = new FuncTypeAST("int");
@@ -102,21 +236,63 @@ FuncType
     }
   ;
 
-Block :
-    '{' Stmt  '}' {
-        auto s = std::unique_ptr<BaseAST>($2);
-        $$=new BlockAST(s);
-    };
+BType
+  : INT {
+        $$ = new BTypeAST("int");
+    } | VOID {
+        $$ = new BTypeAST("void");
+    }
+  ;
+
+Block
+  : '{' BlockItems '}' {
+    auto stmt=std::unique_ptr<BaseAST>($2);
+    $$ = new BlockAST(stmt);
+  }
+  | '{' '}'{
+    $$ = new BlockAST();
+  }
+
 
 
 
 Stmt
-  : RETURN Exp ';' {
-        auto number = std::unique_ptr<BaseAST>($2);
-      
-        $$ =new StmtAST(number,0);
-    }
-  ;
+  : LVal '=' Exp ';'{
+    auto ast = new StmtAST();
+    ast->type=0;
+    ast->lval = std::unique_ptr<BaseAST>($1);
+    ast->exp = std::unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  | RETURN Exp ';' {
+    auto ast = new StmtAST();
+    ast->type=1;
+    ast->exp = std::unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+  | RETURN ';' {
+    auto ast = new StmtAST();
+    ast->type=2;
+    $$ = ast;
+  }
+  | Block {
+    auto ast = new StmtAST();
+    ast->type=3;
+    ast->block = std::unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | Exp ';' {
+    auto ast = new StmtAST();
+    ast->type=4;
+    ast->exp = std::unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | ';' {
+    auto ast = new StmtAST();
+    ast->type=5;
+    $$ = ast;
+  };
+
 Exp 
     : LOrExp {
         auto add_exp = std::unique_ptr<BaseAST>($1);
@@ -132,6 +308,10 @@ PrimaryExp
     | Number {
         auto num=int($1);
         $$ = new PrimaryExpAST(num);
+    }
+    | LVal {
+        auto lval = std::unique_ptr<BaseAST>($1);
+        $$ = new PrimaryExpAST(lval,2);
     }
     ;
 

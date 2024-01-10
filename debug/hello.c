@@ -1,4 +1,5 @@
 int main() {
-  // 忽略我的存在
-return 1<2;
+   int x =10;
+  x=2+1;
+  return x;
 }
