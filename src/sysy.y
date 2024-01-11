@@ -37,6 +37,8 @@ int IR::array_block=0;
 int IR::func_array=0;
 int IR::blockreturn=0;
 string IR::var_name="";
+whileinfo wi=whileinfo();
+whileinfo* IR::curwi=&wi;
 map<string,int> IR::constmap;
 map<string,int> IR::globalname;
 vector<int> IR::arraydef; 

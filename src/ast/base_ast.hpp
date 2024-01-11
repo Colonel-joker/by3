@@ -88,6 +88,21 @@ struct blockmap{
     }
   }
 };
+
+struct whileinfo{
+  int while_cond;
+  int while_end;
+  whileinfo* parent;
+  whileinfo()
+  {
+    while_cond=0;
+    while_end=0;
+  }
+};
+
+
+
+
 class IR
 {
 public:
@@ -122,7 +137,7 @@ public:
   static blockmap* curbmap;
   int store; //存储位置
   int num;   //立即数
-  
+  static whileinfo* curwi;
   int alreturn;//alreturn处理多个语句时快速检查代码块是否包含返回语句
   std::string koopaIR;//中间代码字符串
   std::string funcrparams;

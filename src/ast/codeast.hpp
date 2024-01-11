@@ -249,7 +249,7 @@ public:
       {
         IR::curbmap->umap.emplace(ident,Val(0,0,index));
         ret.koopaIR="  @"+ident+"_"+std::to_string(index)+" = alloc i32\n";
-        ret.koopaIR=ret.koopaIR+"  store 0, @"+ident+"_"+std::to_string(index)+"\n";
+        ret.koopaIR+="  store 0, @"+ident+"_"+std::to_string(index)+"\n";
       }
       }
       break;
@@ -283,11 +283,11 @@ public:
       {
         IR::curbmap->umap.emplace(ident,Val(0,ExpIR.num,index));
         ret.koopaIR="  @"+ident+"_"+std::to_string(index)+" = alloc i32\n";
-        ret.koopaIR=ret.koopaIR+ExpIR.koopaIR;
+        ret.koopaIR+=ExpIR.koopaIR;
         if (ExpIR.IRtype==IR::EXP)
-        ret.koopaIR=ret.koopaIR+"  store %"+std::to_string(ExpIR.store)+", @"+ident+"_"+std::to_string(index)+"\n";
+        ret.koopaIR+="  store %"+std::to_string(ExpIR.store)+", @"+ident+"_"+std::to_string(index)+"\n";
         else
-        ret.koopaIR=ret.koopaIR+"  store "+std::to_string(ExpIR.num)+", @"+ident+"_"+std::to_string(index)+"\n";
+        ret.koopaIR+="  store "+std::to_string(ExpIR.num)+", @"+ident+"_"+std::to_string(index)+"\n";
       }
       IR::constdefing=0;
       }
@@ -355,33 +355,33 @@ class FuncDefAST : public BaseAST {
      std::map<std::string, Val>::iterator it;
     for (it=bmap.umap.begin();it!=bmap.umap.end();it++)
     {
-      ret.koopaIR=ret.koopaIR+"  %"+it->first+" = alloc ";
+      ret.koopaIR+="  %"+it->first+" = alloc ";
       if (it->second.type==Val::ARR)
       {
         int len=it->second.asize.size();
         if (len==0)
         {
-          ret.koopaIR=ret.koopaIR+"*i32";
+          ret.koopaIR+="*i32";
         }
         else
         {
-          ret.koopaIR=ret.koopaIR+"*";
+          ret.koopaIR+="*";
           for (int i=1;i<len;i++)
           {
-            ret.koopaIR=ret.koopaIR+"[";
+            ret.koopaIR+="[";
           }
           ret.koopaIR+="i32, ";
           for (int i=len-1;i>1;i--)
           {
-            ret.koopaIR=ret.koopaIR+std::to_string(it->second.asize[i])+"], ";
+            ret.koopaIR+=std::to_string(it->second.asize[i])+"], ";
           }
-          ret.koopaIR=ret.koopaIR+std::to_string(it->second.asize[1])+"]";
+          ret.koopaIR+=std::to_string(it->second.asize[1])+"]";
         }
-        ret.koopaIR=ret.koopaIR+"\n";
+        ret.koopaIR+="\n";
       }
       else 
-        ret.koopaIR=ret.koopaIR+"i32\n";
-      ret.koopaIR=ret.koopaIR+"  store @"+it->first+", %"+it->first+"\n";
+        ret.koopaIR+="i32\n";
+      ret.koopaIR+="  store @"+it->first+", %"+it->first+"\n";
     }
 
     IR::blockreturn=0;
@@ -528,6 +528,7 @@ class StmtAST : public BaseAST {
   std::unique_ptr<BaseAST> block;
   std::unique_ptr<BaseAST> true_stmt;
   std::unique_ptr<BaseAST> false_stmt;
+  whileinfo wi;
   int type;
   StmtAST(){}
   StmtAST(std::unique_ptr<BaseAST> & e,int t){
@@ -557,22 +558,22 @@ class StmtAST : public BaseAST {
   
         case Val::CONST:
           if (ExpIR.IRtype==IR::EXP)
-          ret.koopaIR=ret.koopaIR+"  store %"+std::to_string(ExpIR.store)+", @"+ident+"_"+std::to_string(V.index)+"\n";
+          ret.koopaIR+="  store %"+std::to_string(ExpIR.store)+", @"+ident+"_"+std::to_string(V.index)+"\n";
           else if(ExpIR.IRtype==IR::NUM)
-          ret.koopaIR=ret.koopaIR+"  store "+std::to_string(ExpIR.num)+", @"+ident+"_"+std::to_string(V.index)+"\n"; 
+          ret.koopaIR+="  store "+std::to_string(ExpIR.num)+", @"+ident+"_"+std::to_string(V.index)+"\n"; 
           break;
         case Val::ARR:
             ret.IRtype = IR::EXP;
             if (ExpIR.IRtype==IR::EXP)
-            ret.koopaIR=ret.koopaIR+lvalIR.koopaIR+"  store %"+std::to_string(ExpIR.store)+", %"+std::to_string(lvalIR.store)+"\n";
+            ret.koopaIR+=lvalIR.koopaIR+"  store %"+std::to_string(ExpIR.store)+", %"+std::to_string(lvalIR.store)+"\n";
             else if(ExpIR.IRtype==IR::NUM)
-            ret.koopaIR=ret.koopaIR+lvalIR.koopaIR+"  store "+std::to_string(ExpIR.num)+", %"+std::to_string(lvalIR.store)+"\n"; 
+            ret.koopaIR+=lvalIR.koopaIR+"  store "+std::to_string(ExpIR.num)+", %"+std::to_string(lvalIR.store)+"\n"; 
         break;
         case Val::CARR:
           if (ExpIR.IRtype==IR::EXP)
-          ret.koopaIR=ret.koopaIR+"  store %"+std::to_string(ExpIR.store)+", @"+ident+"_"+std::to_string(V.index)+"\n";
+          ret.koopaIR+="  store %"+std::to_string(ExpIR.store)+", @"+ident+"_"+std::to_string(V.index)+"\n";
           else if(ExpIR.IRtype==IR::NUM)
-          ret.koopaIR=ret.koopaIR+"  store "+std::to_string(ExpIR.num)+", @"+ident+"_"+std::to_string(V.index)+"\n"; 
+          ret.koopaIR+="  store "+std::to_string(ExpIR.num)+", @"+ident+"_"+std::to_string(V.index)+"\n"; 
         default:
         break;
         }
@@ -633,29 +634,29 @@ class StmtAST : public BaseAST {
         IR::shortcircuit=0;//重置短路信号
         int label_then=IR::blocks;
         IR::blocks++;
-        int label_end=IR::blocks;
+        int label_next=IR::blocks;//IF 语句的下一块
         IR::blocks++;
 
         ExpIR = exp->get_koopa();
-        ret.koopaIR=ret.koopaIR+ExpIR.koopaIR;
+        ret.koopaIR+=ExpIR.koopaIR;
         if (ExpIR.IRtype==IR::EXP||ExpIR.IRtype==IR::VAR)
-          ret.koopaIR=ret.koopaIR+"  br %"+std::to_string(ExpIR.store)+", %block"+std::to_string(label_then)+", %block"+std::to_string(label_end)+"\n";
+          ret.koopaIR+="  br %"+std::to_string(ExpIR.store)+", %block"+std::to_string(label_then)+", %block"+std::to_string(label_next)+"\n";
         else 
         {//加0，当成表达式处理
           int rid=IR::registers;
           IR::registers++;
-          ret.koopaIR=ret.koopaIR+"  %"+std::to_string(rid)+" = add 0, "+std::to_string(ExpIR.num)+"\n";
-          ret.koopaIR=ret.koopaIR+"  br %"+std::to_string(rid)+", %block"+std::to_string(label_then)+", %block"+std::to_string(label_end)+"\n";
+          ret.koopaIR+="  %"+std::to_string(rid)+" = add 0, "+std::to_string(ExpIR.num)+"\n";
+          ret.koopaIR+="  br %"+std::to_string(rid)+", %block"+std::to_string(label_then)+", %block"+std::to_string(label_next)+"\n";
         }
         IR::shortcircuit=0;
         int blkr=IR::blockreturn;
         IR::blockreturn=0;
         IR tIR=true_stmt->get_koopa();
-          ret.koopaIR=ret.koopaIR+"%block"+std::to_string(label_then)+":\n"+tIR.koopaIR;
+          ret.koopaIR+="%block"+std::to_string(label_then)+":\n"+tIR.koopaIR;
         if (IR::blockreturn==0)
-          ret.koopaIR=ret.koopaIR+"  jump %block"+std::to_string(label_end)+"\n";
+          ret.koopaIR+="  jump %block"+std::to_string(label_next)+"\n";
         IR::blockreturn=blkr;
-        ret.koopaIR=ret.koopaIR+"%block"+std::to_string(label_end)+":\n";
+        ret.koopaIR+="%block"+std::to_string(label_next)+":\n";
         IR::blockreturn=0;
         break;
       }
@@ -668,40 +669,93 @@ class StmtAST : public BaseAST {
       IR::blocks++;
       int label_else=IR::blocks;
       IR::blocks++;
-      int label_end=IR::blocks;
+      int label_next=IR::blocks;
       IR::blocks++;
 
       ExpIR = exp->get_koopa();
-      ret.koopaIR=ret.koopaIR+ExpIR.koopaIR;
+      ret.koopaIR+=ExpIR.koopaIR;
       if (ExpIR.IRtype==IR::EXP||ExpIR.IRtype==IR::VAR)
-      ret.koopaIR=ret.koopaIR+"  br %"+std::to_string(ExpIR.store)+", %block"+std::to_string(label_then)+", %block"+std::to_string(label_else)+"\n";
+      ret.koopaIR+="  br %"+std::to_string(ExpIR.store)+", %block"+std::to_string(label_then)+", %block"+std::to_string(label_else)+"\n";
       else
       {
         int rid=IR::registers;
         IR::registers++;
-        ret.koopaIR=ret.koopaIR+"  %"+std::to_string(rid)+" = add 0, "+std::to_string(ExpIR.num)+"\n";
-        ret.koopaIR=ret.koopaIR+"  br %"+std::to_string(rid)+", %block"+std::to_string(label_then)+", %block"+std::to_string(label_else)+"\n";
+        ret.koopaIR+="  %"+std::to_string(rid)+" = add 0, "+std::to_string(ExpIR.num)+"\n";
+        ret.koopaIR+="  br %"+std::to_string(rid)+", %block"+std::to_string(label_then)+", %block"+std::to_string(label_else)+"\n";
       }
       IR::shortcircuit=0;
+      
       int blkr=IR::blockreturn;
       IR::blockreturn=0;
       IR tIR=true_stmt->get_koopa();
-      ret.koopaIR=ret.koopaIR+"%block"+std::to_string(label_then)+":\n"+tIR.koopaIR;
+      ret.koopaIR+="%block"+std::to_string(label_then)+":\n"+tIR.koopaIR;
       if (IR::blockreturn==0)
-        ret.koopaIR=ret.koopaIR+"  jump %block"+std::to_string(label_end)+"\n";      
+        ret.koopaIR+="  jump %block"+std::to_string(label_next)+"\n";      
       IR::blockreturn=0;
       IR fIR=false_stmt->get_koopa();
-      ret.koopaIR=ret.koopaIR+"%block"+std::to_string(label_else)+":\n"+fIR.koopaIR;
+      ret.koopaIR+="%block"+std::to_string(label_else)+":\n"+fIR.koopaIR;
       if (IR::blockreturn==0)
-        ret.koopaIR=ret.koopaIR+"  jump %block"+std::to_string(label_end)+"\n";
+        ret.koopaIR+="  jump %block"+std::to_string(label_next)+"\n";
       IR::blockreturn=blkr;
-      ret.koopaIR=ret.koopaIR+"%block"+std::to_string(label_end)+":\n";
+      ret.koopaIR+="%block"+std::to_string(label_next)+":\n";
       IR::blockreturn=0;
         break;
       }
     case 8://WHILE '(' Exp ')' Stmt
+    {
+       ret.koopaIR="";
+      IR::shortcircuit=0;
+      
+      int tabel_cond=IR::blocks;
+      IR::blocks++;
+      int tabel_then=IR::blocks;
+      IR::t_tag=tabel_then;
+      IR::blocks++;
+      int tabel_end=IR::blocks;
+      IR::blocks++;
+      //
+      ret.koopaIR+="  jump %block"+std::to_string(tabel_cond)+"\n";
+      ret.koopaIR+="%block"+std::to_string(tabel_cond)+":\n";
+      ExpIR = exp->get_koopa();
+      ret.koopaIR+=ExpIR.koopaIR;
+      if (ExpIR.IRtype==IR::EXP||ExpIR.IRtype==IR::VAR)
+        ret.koopaIR+="  br %"+std::to_string(ExpIR.store)+", %block"+std::to_string(tabel_then)+", %block"+std::to_string(tabel_end)+"\n";
+      else
+      {
+        int rid=IR::registers;
+        IR::registers++;
+        ret.koopaIR+="  %"+std::to_string(rid)+" = add 0, "+std::to_string(ExpIR.num)+"\n";
+        ret.koopaIR+="  br %"+std::to_string(rid)+", %block"+std::to_string(tabel_then)+", %block"+std::to_string(tabel_end)+"\n";
+      }
+      IR::shortcircuit=0;
+      wi.while_cond=tabel_cond;
+      wi.while_end=tabel_end;
+      wi.parent=IR::curwi;
+      IR::curwi=&wi;
+      int blkr=IR::blockreturn;
+      IR::blockreturn=0;
+      IR tIR=true_stmt->get_koopa();
+      IR::curwi=wi.parent;
+      ret.koopaIR+="%block"+std::to_string(tabel_then)+":\n"+tIR.koopaIR;
+      if (IR::blockreturn==0)
+        ret.koopaIR+="  jump %block"+std::to_string(tabel_cond)+"\n";
+      IR::blockreturn=blkr;
+      
+      ret.koopaIR+="%block"+std::to_string(tabel_end)+":\n";
+      IR::blockreturn=0;
+      break;
+    }
     case 9://BREAK ';'
+    {
+      ret.koopaIR="  jump %block"+std::to_string(IR::curwi->while_end)+"\n"+"%useless"+std::to_string(IR::uselessblocks)+":\n";
+      IR::uselessblocks++;
+      break;
+    }
     case 10://CONTINUE ';'
+    {
+      ret.koopaIR="  jump %block"+std::to_string(IR::curwi->while_cond)+"\n"+"%useless"+std::to_string(IR::uselessblocks)+":\n";
+      IR::uselessblocks++;
+    }
     default:
       break;
     }
