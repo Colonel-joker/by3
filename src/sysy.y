@@ -291,6 +291,38 @@ Stmt
     auto ast = new StmtAST();
     ast->type=5;
     $$ = ast;
+  }
+  | IF '(' Exp ')' Stmt {
+    auto ast = new StmtAST();
+    ast->type=6;
+    ast->exp=std::unique_ptr<BaseAST>($3);
+    ast->true_stmt=std::unique_ptr<BaseAST>($5);
+    $$ = ast;
+  }
+  | IF '(' Exp ')' Stmt ELSE Stmt {
+    auto ast = new StmtAST();
+    ast->type=7;
+    ast->exp=std::unique_ptr<BaseAST>($3);
+    ast->true_stmt=std::unique_ptr<BaseAST>($5);
+    ast->false_stmt=std::unique_ptr<BaseAST>($7);
+    $$ = ast;
+  } 
+  | WHILE '(' Exp ')' Stmt {
+    auto ast = new StmtAST();
+    ast->type=8;
+    ast->exp=std::unique_ptr<BaseAST>($3);
+    ast->true_stmt=std::unique_ptr<BaseAST>($5);
+    $$ = ast;
+  }
+  | BREAK ';'{
+    auto ast = new StmtAST();
+    ast->type=9;
+    $$ = ast;
+  }
+  | CONTINUE ';'{
+    auto ast = new StmtAST();
+    ast->type=10;
+    $$ = ast;
   };
 
 Exp 

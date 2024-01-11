@@ -101,7 +101,7 @@ public:
   static int arraydefing;
   static int constdefing;
   static int vardefing;
-  static int blocks;
+  static int blocks;//每当需要创建一个新的基本块时，IR::blocks 的值会被递增，并且用于为新的基本块生成一个唯一的标识符
   static int globaldef;
   static int uselessblocks;
   static int shortcircuit;
@@ -123,8 +123,8 @@ public:
   int store; //存储位置
   int num;   //立即数
   
-  int alreturn;//alreturn
-  std::string koopaIR;
+  int alreturn;//alreturn处理多个语句时快速检查代码块是否包含返回语句
+  std::string koopaIR;//中间代码字符串
   std::string funcrparams;
   std::vector<int> arrayparam;
   void get_IRtype_fromVal(Val::VT v){
