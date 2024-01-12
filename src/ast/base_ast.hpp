@@ -115,7 +115,7 @@ public:
   static int registers;
   static int arraydefing;
   static int constdefing;
-  static int vardefing;
+
   static int blocks;//每当需要创建一个新的基本块时，IR::blocks 的值会被递增，并且用于为新的基本块生成一个唯一的标识符
   static int globaldef;
   static int uselessblocks;

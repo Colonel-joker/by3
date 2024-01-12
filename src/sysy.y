@@ -23,7 +23,7 @@ using namespace std;
 int IR::registers=0;
 int IR::arraydefing=0;
 int IR::constdefing=0;
-int IR::vardefing=0;
+
 int IR::blocks=0;
 int IR::uselessblocks=0;
 int IR::shortcircuit=0;
