@@ -21,7 +21,7 @@ IR::constdefing 为 1，表示当前正在处理常量定义
 #include <iostream>
 #include <memory>
 #include <cassert>
-#include <map>
+#include <unordered_map>
 // 所有 AST 的基类
 
 static int nowww=1;
@@ -34,8 +34,8 @@ struct Val{
       ARR,
       CARR
    }type;
-  int num;  // isconst=0或1时为值,isconst=2或3时为维度
-  int index;
+  int num;  
+  int index;//变量索引，0是全局变量，正数是局部变量
   std::vector<int> asize;
   Val(){
     type=VAR;
@@ -65,8 +65,8 @@ struct Val{
   }
 };
 
-struct blockmap{
-  std::map<std::string, Val> umap;
+struct blockmap{//符号表
+  std::unordered_map<std::string, Val> umap;
   blockmap *parent;
   int alreturn;
   blockmap(){
@@ -75,24 +75,25 @@ struct blockmap{
   blockmap(blockmap* p){
     parent=p;
   }
-  std::map<std::string, Val>::iterator find(std::string ident){
-    if (umap.find(ident)!=umap.end())
-      return umap.find(ident);
-    else
+  std::unordered_map<std::string, Val>::iterator find(std::string ident){
+    std::unordered_map<std::string, Val>::iterator it=umap.find(ident);
+    if (it!=umap.end())
+      return it;
+    else  //去父节点找
     {
       if (parent!=0)
          return parent->find(ident);
       else 
-         return std::map<std::string, Val>::iterator();//空指针
+         return std::unordered_map<std::string, Val>::iterator();//空指针
     }
   }
 };
 
-struct whileinfo{
+struct while_node{//每一层创建一个wile_node用于记录while的条件块号和跳出块号
   int while_cond;
   int while_end;
-  whileinfo* parent;
-  whileinfo()
+  while_node* parent;
+  while_node()
   {
     while_cond=0;
     while_end=0;
@@ -110,26 +111,23 @@ public:
       NUM,
       ARR,
     //  VAR
-   }IRtype;//类型 0 式子 1 立即数 2数组 
-  static int registers;
-  static int constdefing;
-  static int globaldef;
+   }IRtype; 
+  static int registers;//寄存器数目
+  static int constdefing;//在定义常量
+  static int globaldef;//在定义全局变量
   static int blocks;//每当需要创建一个新的基本块时，IR::blocks 的值会被递增，并且用于为新的基本块生成一个唯一的标识符
-  static int uselessblocks;
-  static int shortcircuit;
-  static int while_end;
-  static int while_cond;
-  static int blockreturn;
-  static std::map<std::string, int> constmap;//常量表
-  static std::map<std::string, int> globalname; //全局符号 0 常量; 1 变量; 2 int函数; 3 void函数
-  static blockmap* curbmap;
-  int store; //存储位置
+  static int uselessblocks;//废块，给contunue和break后的语句标记上
+  
+  static int blockreturn;//block中是否有返回语句，用于决定谁来输出ret
+  static std::unordered_map<std::string, int> constmap;//常量表建立映射：  ident->index 避免同名
+  static std::unordered_map<std::string, int> functype_map; //函数类型表建立映射：ident->type 规定2 int函数; 3 void函数   
+  static blockmap* curbmap;//当前块的符号表指针
+  int store_rid; //当前表达式存储的寄存器号
   int num;   //立即数
-  static whileinfo* curwi;
+  static while_node* curwlist;//lv7 当前while链表的指针,实现一层层跳出去
   int alreturn;//alreturn处理多个语句时快速检查代码块是否包含返回语句
   std::string koopaIR;//中间代码字符串
-  std::string funcrparams;
-  static std::string var_name;
+  std::string funcrparams;//参数串 lv8
   void get_IRtype_fromVal(Val::VT v){
       switch (v)
       {
@@ -146,7 +144,7 @@ public:
   }
   IR()
   {
-    store = 0;
+    store_rid = 0;
     num = 0;
     IRtype = EXP;
     koopaIR = "";

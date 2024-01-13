@@ -12,30 +12,23 @@
 using namespace std;
 
 
-string  riscv_code = "";
+string  riscv_code = "";//riscv代码
 string registers[16] = {"a0","x0", "t0", "t1", "t2", "t3", "t4", "t5", "t6", "a1", "a2", "a3", "a4", "a5", "a6", "a7"};
-string funclist[8]={"@getint","@getch","@getarray","@putint","@putch","@putarray","@starttime","@stoptime"};
-long numins=0;
-bool detect_depth=0;
-long stackptr=0;
-long registerptr = 2;//一般从t0开始用寄存器
-long val_zero=0;
-struct stack_value{
-  long pos;
+string funclist[8]={"@getint","@getch","@getarray","@putint","@putch","@putarray","@starttime","@stoptime"};//跳过库函数
+long num_ins=0;//指令数
+bool detect_depth=0;//先根据指令数目探测栈深度
+long stackptr=0;//栈指针
+long registerptr = 2;//一般从t0开始用寄存器，本部分实际上只使用了a0,x0,t0,t1
+struct stack_value{//栈值
+  long depth;
   long val; 
   long type; //0 i32 1 array 2 pointer
-  vector<long> asize;
-  stack_value(){
-    pos=0;
-    val=0;
-  }
-  stack_value(long Pos,long Val){
-    pos=Pos;
-    val=Val;
+  stack_value(long P,long V):depth(P),val(V){}
+  stack_value():depth(0),val(0){
   }
 };
 
-unordered_map<koopa_raw_value_t, stack_value> stackmap;
+unordered_map<koopa_raw_value_t, stack_value> stackmap;//栈
 
 void Visit(const koopa_raw_program_t &);
 void Visit(const koopa_raw_slice_t &);
@@ -91,7 +84,7 @@ string sw_cmd(string dst,long stacksize)
 void local_alloc(const koopa_raw_value_t &value,stack_value &ret,long functype){
   if (value->ty->data.pointer.base->tag==KOOPA_RTT_INT32)
   {
-    ret.pos=stackptr; 
+    ret.depth=stackptr; 
     ret.val=0; 
     ret.type=0;
     if (functype==1)
@@ -100,7 +93,7 @@ void local_alloc(const koopa_raw_value_t &value,stack_value &ret,long functype){
       stackmap.emplace(value,ret);
     }
     else if (functype==0)
-      numins++;
+      num_ins++;
   }
  
 }
@@ -162,9 +155,9 @@ void Visit(const koopa_raw_function_t &func)
       riscv_code += '\n';
       riscv_code += (func->name + 1);
       riscv_code += ":\n";
-      if (numins > 0)
+      if (num_ins > 0)
       {
-        long stacksize=16*((numins*4+15)/16);
+        long stacksize=16*((num_ins*4+15)/16);
         if (stacksize>=2048)
         {
           riscv_code = riscv_code + "  li\tt0, -"+to_string(stacksize)+"\n";
@@ -177,7 +170,7 @@ void Visit(const koopa_raw_function_t &func)
       }
     }
     else{
-      numins=0;
+      num_ins=0;
     }
     
     Visit(func->bbs);
@@ -213,7 +206,7 @@ void Visit(const koopa_raw_value_t &value)
       return;
     }
     if (value->ty->tag!=KOOPA_RTT_UNIT)
-      numins++;
+      num_ins++;
     
     return;
 
@@ -230,7 +223,7 @@ void Visit(const koopa_raw_value_t &value)
   //   break;
   case KOOPA_RVT_BINARY:
     Visit(kind.data.binary);
-    ret.pos=stackptr; 
+    ret.depth=stackptr; 
     ret.val=0; 
     ret.type=2;
      riscv_code+=sw_cmd("t0",stackptr );
@@ -269,11 +262,11 @@ void Visit(const koopa_raw_return_t &ret)
     }
     else
     {
-       riscv_code+=lw_cmd(registers[registerptr],stackmap.find(ret.value)->second.pos ); 
+       riscv_code+=lw_cmd(registers[registerptr],stackmap.find(ret.value)->second.depth ); 
     }
   }
-    if(numins>0){
-      long stacksize=16*((numins*4+15)/16);
+    if(num_ins>0){
+      long stacksize=16*((num_ins*4+15)/16);
       if (stacksize>=2048)
       {
         riscv_code+="  li\tt0, "+to_string(stacksize)+"\n";
@@ -300,7 +293,7 @@ void Visit(const koopa_raw_binary_t &binary)
   }
   else
   {
-     riscv_code+=lw_cmd("t0",stackmap.find(binary.lhs)->second.pos );
+     riscv_code+=lw_cmd("t0",stackmap.find(binary.lhs)->second.depth );
   }
 
   if (binary.rhs->kind.tag == KOOPA_RVT_INTEGER)
@@ -311,7 +304,7 @@ void Visit(const koopa_raw_binary_t &binary)
   }
   else
   {
-     riscv_code+=lw_cmd("t1",stackmap.find(binary.rhs)->second.pos );
+     riscv_code+=lw_cmd("t1",stackmap.find(binary.rhs)->second.depth );
   }
   switch (binary.op)//查询enum koopa_raw_binary_op
   {
@@ -386,9 +379,9 @@ void Visit(const koopa_raw_store_t &s)
   
   }
   else{
-     riscv_code+=lw_cmd("t0",stackmap.find(s.value)->second.pos );   
+     riscv_code+=lw_cmd("t0",stackmap.find(s.value)->second.depth );   
   }
-     riscv_code += sw_cmd("t0",stackmap.find(s.dest)->second.pos );
+     riscv_code += sw_cmd("t0",stackmap.find(s.dest)->second.depth );
      
 }
 
@@ -396,11 +389,11 @@ stack_value Visit(const koopa_raw_load_t &l)
 {
   registerptr=2;
   stack_value ret;
-  ret.pos=stackptr; ret.val=0;  
+  ret.depth=stackptr; ret.val=0;  
 
   //局部变量
   stack_value src=stackmap.find(l.src)->second;
-  riscv_code+=lw_cmd("t0",src.pos );
+  riscv_code+=lw_cmd("t0",src.depth );
   
   return ret;
 }
@@ -410,7 +403,7 @@ void Visit(const koopa_raw_branch_t &b)
   registerptr=2;
   string t_block=string(b.true_bb->name+1);
   string f_block=string(b.false_bb->name+1);
-   riscv_code+=lw_cmd("t0",stackmap.find(b.cond)->second.pos );
+   riscv_code+=lw_cmd("t0",stackmap.find(b.cond)->second.depth );
    riscv_code += "  bnez\tt0, " +t_block+"\n";
    riscv_code += "  j "+f_block+"\n";
 }

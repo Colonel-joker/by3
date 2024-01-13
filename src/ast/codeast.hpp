@@ -1,6 +1,6 @@
 #pragma once
 
-#include <map>
+#include <unordered_map>
 
 #include "ast/base_ast.hpp"
 #include "koopa.h"
@@ -33,7 +33,7 @@ public:
     }
 };
 
-//lv4
+
 class BTypeAST : public BaseAST
 {
 public:
@@ -45,6 +45,8 @@ public:
       return ret;
     }
 };
+
+//lv7完成
 class FuncTypeAST : public BaseAST
 {
 public:
@@ -210,7 +212,7 @@ public:
     case 0://IDENT
       {
       ret.IRtype=IR::NUM;
-      ret.store=0;
+      ret.store_rid=0;
       ret.num=0;
       int index=1;
       if (IR::constmap.find(ident)==IR::constmap.end())
@@ -269,7 +271,7 @@ public:
         ret.koopaIR="  @"+ident+"_"+std::to_string(index)+" = alloc i32\n";
         ret.koopaIR+=ExpIR.koopaIR;
         if (ExpIR.IRtype==IR::EXP)
-        ret.koopaIR+="  store %"+std::to_string(ExpIR.store)+", @"+ident+"_"+std::to_string(index)+"\n";
+        ret.koopaIR+="  store %"+std::to_string(ExpIR.store_rid)+", @"+ident+"_"+std::to_string(index)+"\n";
         else
         ret.koopaIR+="  store "+std::to_string(ExpIR.num)+", @"+ident+"_"+std::to_string(index)+"\n";
       }
@@ -293,21 +295,21 @@ public:
     {
       IR ret;
       ret.koopaIR="decl @getint(): i32\n";
-      IR::globalname.emplace("getint",2);
+      IR::functype_map.emplace("getint",2);
       ret.koopaIR+="decl @getch(): i32\n";
-      IR::globalname.emplace("getch",2);
+      IR::functype_map.emplace("getch",2);
       ret.koopaIR+="decl @getarray(*i32): i32\n";
-      IR::globalname.emplace("getarray",2);
+      IR::functype_map.emplace("getarray",2);
       ret.koopaIR+="decl @putint(i32)\n";
-      IR::globalname.emplace("putint",3);
+      IR::functype_map.emplace("putint",3);
       ret.koopaIR+="decl @putch(i32)\n";
-      IR::globalname.emplace("putch",3);
+      IR::functype_map.emplace("putch",3);
       ret.koopaIR+="decl @putarray(i32, *i32)\n";
-      IR::globalname.emplace("putarray",3);
+      IR::functype_map.emplace("putarray",3);
       ret.koopaIR+="decl @starttime()\n";
-      IR::globalname.emplace("starttime",3);
+      IR::functype_map.emplace("starttime",3);
       ret.koopaIR+="decl @stoptime()\n\n";
-      IR::globalname.emplace("stoptime",3);
+      IR::functype_map.emplace("stoptime",3);
     ret.koopaIR+=comp_units->get_koopa().koopaIR;
     return ret;
     }
@@ -337,7 +339,7 @@ public:
     {
       IR ret=comp_units->get_koopa();
       IR::registers=0;
-      IR::constmap=std::map<std::string, int>();
+      IR::constmap=std::unordered_map<std::string, int>();
       IR func=global_def->get_koopa();
       ret.koopaIR=ret.koopaIR+func.koopaIR;
       return ret;
@@ -400,7 +402,7 @@ class FuncDefAST : public BaseAST {
   int type;  
   FuncDefAST(){}
   IR get_koopa()  override {
-    bmap.umap=std::map<std::string, Val>();
+    bmap.umap=std::unordered_map<std::string, Val>();
     bmap.parent=IR::curbmap;
     IR::curbmap=&bmap;//初始化curbmap
 
@@ -415,47 +417,23 @@ class FuncDefAST : public BaseAST {
     if (ftype == "int")
     {
       ret.koopaIR += ": i32";
-      IR::globalname.emplace(ident,2);
+      IR::functype_map.emplace(ident,2);
     }
     else
-      IR::globalname.emplace(ident,3);
+      IR::functype_map.emplace(ident,3);
     ret.koopaIR += " {\n";
     ret.koopaIR += "%entry:\n";
-     std::map<std::string, Val>::iterator it;
+     std::unordered_map<std::string, Val>::iterator it;
     for (it=bmap.umap.begin();it!=bmap.umap.end();it++)
     {
       ret.koopaIR+="  %"+it->first+" = alloc ";
-      if (it->second.type==Val::ARR)
-      {
-        int len=it->second.asize.size();
-        if (len==0)
-        {
-          ret.koopaIR+="*i32";
-        }
-        else
-        {
-          ret.koopaIR+="*";
-          for (int i=1;i<len;i++)
-          {
-            ret.koopaIR+="[";
-          }
-          ret.koopaIR+="i32, ";
-          for (int i=len-1;i>1;i--)
-          {
-            ret.koopaIR+=std::to_string(it->second.asize[i])+"], ";
-          }
-          ret.koopaIR+=std::to_string(it->second.asize[1])+"]";
-        }
-        ret.koopaIR+="\n";
-      }
-      else 
-        ret.koopaIR+="i32\n";
+      ret.koopaIR+="i32\n";
       ret.koopaIR+="  store @"+it->first+", %"+it->first+"\n";
     }
 
     IR::blockreturn=0;
     ret.koopaIR += block->get_koopa().koopaIR;
-    if (ftype == "void"&&IR::blockreturn==0)
+    if (ftype == "void"&&IR::blockreturn==0)//块中没有return 语句
       ret.koopaIR += "  ret\n";
     if (ftype == "int"&&IR::blockreturn==0)
       ret.koopaIR += "  ret 0\n";
@@ -575,7 +553,7 @@ class BlockAST : public BaseAST {
     }
         
     case ITEM:{
-       bmap.umap=std::map<std::string, Val>();
+       bmap.umap=std::unordered_map<std::string, Val>();
         bmap.parent=IR::curbmap;
         IR::curbmap=&bmap;
         IR blkIR=blockitems->get_koopa();
@@ -592,11 +570,7 @@ class BlockAST : public BaseAST {
     }
    
   }
-  // void DumpAST() const override {
-  //   std::cout << "BlockAST { ";
-  //   stmt->DumpAST();
-  //   std::cout << " }";
-  // }
+
 };
 
 class StmtAST : public BaseAST {
@@ -606,7 +580,7 @@ class StmtAST : public BaseAST {
   std::unique_ptr<BaseAST> block;
   std::unique_ptr<BaseAST> true_stmt;
   std::unique_ptr<BaseAST> false_stmt;
-  whileinfo wi;
+  while_node wi;
   int type;
   StmtAST(){}
   StmtAST(std::unique_ptr<BaseAST> & e,int t){
@@ -614,10 +588,7 @@ class StmtAST : public BaseAST {
     type=t;
   }
   IR get_koopa() override {
-  //  if(be_end_dep[nowdep]||be_end_bl[nowbl])return;
     IR ret,ExpIR;
-   // ret.koopaIR+="stmt ";
-   // ret.koopaIR+=to_string(type);
     switch (type)
     {
     case 0://LVal '=' Exp ';'
@@ -636,20 +607,20 @@ class StmtAST : public BaseAST {
   
         case Val::CONST:
           if (ExpIR.IRtype==IR::EXP)
-          ret.koopaIR+="  store %"+std::to_string(ExpIR.store)+", @"+ident+"_"+std::to_string(V.index)+"\n";
+          ret.koopaIR+="  store %"+std::to_string(ExpIR.store_rid)+", @"+ident+"_"+std::to_string(V.index)+"\n";
           else if(ExpIR.IRtype==IR::NUM)
           ret.koopaIR+="  store "+std::to_string(ExpIR.num)+", @"+ident+"_"+std::to_string(V.index)+"\n"; 
           break;
         case Val::ARR:
             ret.IRtype = IR::EXP;
             if (ExpIR.IRtype==IR::EXP)
-            ret.koopaIR+=lvalIR.koopaIR+"  store %"+std::to_string(ExpIR.store)+", %"+std::to_string(lvalIR.store)+"\n";
+            ret.koopaIR+=lvalIR.koopaIR+"  store %"+std::to_string(ExpIR.store_rid)+", %"+std::to_string(lvalIR.store_rid)+"\n";
             else if(ExpIR.IRtype==IR::NUM)
-            ret.koopaIR+=lvalIR.koopaIR+"  store "+std::to_string(ExpIR.num)+", %"+std::to_string(lvalIR.store)+"\n"; 
+            ret.koopaIR+=lvalIR.koopaIR+"  store "+std::to_string(ExpIR.num)+", %"+std::to_string(lvalIR.store_rid)+"\n"; 
         break;
         case Val::CARR:
           if (ExpIR.IRtype==IR::EXP)
-          ret.koopaIR+="  store %"+std::to_string(ExpIR.store)+", @"+ident+"_"+std::to_string(V.index)+"\n";
+          ret.koopaIR+="  store %"+std::to_string(ExpIR.store_rid)+", @"+ident+"_"+std::to_string(V.index)+"\n";
           else if(ExpIR.IRtype==IR::NUM)
           ret.koopaIR+="  store "+std::to_string(ExpIR.num)+", @"+ident+"_"+std::to_string(V.index)+"\n"; 
         default:
@@ -661,16 +632,15 @@ class StmtAST : public BaseAST {
       {  // ret.koopaIR+="stmt 1型";
           if (IR::blockreturn==1)
         {
-          //ret.alreturn=1;
           return ret;
         }
         ExpIR = exp->get_koopa();
         ret.koopaIR += ExpIR.koopaIR;
         if (ExpIR.IRtype == IR::EXP)
-          ret.koopaIR += "  ret %" + std::to_string(ExpIR.store) + '\n';
+          ret.koopaIR += "  ret %" + std::to_string(ExpIR.store_rid) + '\n';
         else
           ret.koopaIR += "  ret " + std::to_string(ExpIR.num) + '\n';
-        //ret.alreturn=1;
+     
         IR::blockreturn=1;
         break;
       }
@@ -709,7 +679,7 @@ class StmtAST : public BaseAST {
     case 6://IF '(' Exp ')' Stmt
       {
         ret.koopaIR="";
-      
+         
         int label_then=IR::blocks;
         IR::blocks++;
         int label_next=IR::blocks;//IF 语句的下一块
@@ -718,15 +688,15 @@ class StmtAST : public BaseAST {
         ExpIR = exp->get_koopa();
         ret.koopaIR+=ExpIR.koopaIR;
         if (ExpIR.IRtype==IR::EXP)
-          ret.koopaIR+="  br %"+std::to_string(ExpIR.store)+", %block"+std::to_string(label_then)+", %block"+std::to_string(label_next)+"\n";
+          ret.koopaIR+="  br %"+std::to_string(ExpIR.store_rid)+", %block"+std::to_string(label_then)+", %block"+std::to_string(label_next)+"\n";
         else 
         {//加0，当成表达式处理
           int rid=IR::registers;
-          IR::IR::registers++;
+          IR::registers++;
           ret.koopaIR+="  %"+std::to_string(rid)+" = add 0, "+std::to_string(ExpIR.num)+"\n";
           ret.koopaIR+="  br %"+std::to_string(rid)+", %block"+std::to_string(label_then)+", %block"+std::to_string(label_next)+"\n";
         }
-        
+       
         int blkr=IR::blockreturn;
         IR::blockreturn=0;
         IR tIR=true_stmt->get_koopa();
@@ -753,16 +723,15 @@ class StmtAST : public BaseAST {
       ExpIR = exp->get_koopa();
       ret.koopaIR+=ExpIR.koopaIR;
       if (ExpIR.IRtype==IR::EXP)
-      ret.koopaIR+="  br %"+std::to_string(ExpIR.store)+", %block"+std::to_string(label_then)+", %block"+std::to_string(label_else)+"\n";
+      ret.koopaIR+="  br %"+std::to_string(ExpIR.store_rid)+", %block"+std::to_string(label_then)+", %block"+std::to_string(label_else)+"\n";
       else
       {
         int rid=IR::registers;
-        IR::IR::registers++;
+        IR::registers++;
         ret.koopaIR+="  %"+std::to_string(rid)+" = add 0, "+std::to_string(ExpIR.num)+"\n";
         ret.koopaIR+="  br %"+std::to_string(rid)+", %block"+std::to_string(label_then)+", %block"+std::to_string(label_else)+"\n";
       }
-      
-      
+
       int blkr=IR::blockreturn;
       IR::blockreturn=0;
       IR tIR=true_stmt->get_koopa();
@@ -782,14 +751,14 @@ class StmtAST : public BaseAST {
     case 8://WHILE '(' Exp ')' Stmt
     {
        ret.koopaIR="";
-     
       
-      int tabel_cond=IR::blocks;
+      
+      int tabel_cond=IR::blocks;//条件块号
       IR::blocks++;
-      int tabel_then=IR::blocks;
+      int tabel_then=IR::blocks;//真块号
       
       IR::blocks++;
-      int tabel_end=IR::blocks;
+      int tabel_end=IR::blocks;//假语句块号
       IR::blocks++;
       //
       ret.koopaIR+="  jump %block"+std::to_string(tabel_cond)+"\n";
@@ -797,23 +766,23 @@ class StmtAST : public BaseAST {
       ExpIR = exp->get_koopa();
       ret.koopaIR+=ExpIR.koopaIR;
       if (ExpIR.IRtype==IR::EXP)
-        ret.koopaIR+="  br %"+std::to_string(ExpIR.store)+", %block"+std::to_string(tabel_then)+", %block"+std::to_string(tabel_end)+"\n";
+        ret.koopaIR+="  br %"+std::to_string(ExpIR.store_rid)+", %block"+std::to_string(tabel_then)+", %block"+std::to_string(tabel_end)+"\n";
       else
       {
         int rid=IR::registers;
-        IR::IR::registers++;
+        IR::registers++;
         ret.koopaIR+="  %"+std::to_string(rid)+" = add 0, "+std::to_string(ExpIR.num)+"\n";
         ret.koopaIR+="  br %"+std::to_string(rid)+", %block"+std::to_string(tabel_then)+", %block"+std::to_string(tabel_end)+"\n";
       }
-
+     
       wi.while_cond=tabel_cond;
       wi.while_end=tabel_end;
-      wi.parent=IR::curwi;
-      IR::curwi=&wi;
+      wi.parent=IR::curwlist;
+      IR::curwlist=&wi;
       int blkr=IR::blockreturn;
       IR::blockreturn=0;
       IR tIR=true_stmt->get_koopa();
-      IR::curwi=wi.parent;
+      IR::curwlist=wi.parent;
       ret.koopaIR+="%block"+std::to_string(tabel_then)+":\n"+tIR.koopaIR;
       if (IR::blockreturn==0)
         ret.koopaIR+="  jump %block"+std::to_string(tabel_cond)+"\n";
@@ -825,13 +794,13 @@ class StmtAST : public BaseAST {
     }
     case 9://BREAK ';'
     {
-      ret.koopaIR="  jump %block"+std::to_string(IR::curwi->while_end)+"\n"+"%useless"+std::to_string(IR::uselessblocks)+":\n";
+      ret.koopaIR="  jump %block"+std::to_string(IR::curwlist->while_end)+"\n"+"%useless"+std::to_string(IR::uselessblocks)+":\n";
       IR::uselessblocks++;
       break;
     }
     case 10://CONTINUE ';'
     {
-      ret.koopaIR="  jump %block"+std::to_string(IR::curwi->while_cond)+"\n"+"%useless"+std::to_string(IR::uselessblocks)+":\n";
+      ret.koopaIR="  jump %block"+std::to_string(IR::curwlist->while_cond)+"\n"+"%useless"+std::to_string(IR::uselessblocks)+":\n";
       IR::uselessblocks++;
     }
     default:

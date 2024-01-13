@@ -32,21 +32,6 @@ public:
             if(ret.IRtype==IR::ARR)
                 ret.num=0;
             break;
-        case 1://IDENT Exps
-        {
-            ret.IRtype = IR::ARR;
-            Val mval=IR::curbmap->find(ident)->second;
-            if (mval.index!=-1)
-                IR::var_name="@"+ident+"_"+std::to_string(mval.index);
-            else
-                IR::var_name="%"+ident;
-            IR ExpIR=exps->get_koopa();
-           
-            ret.store=ExpIR.store;
-            ret.koopaIR=ExpIR.koopaIR;
-        
-
-        }
         default:
             break;
         }
@@ -90,6 +75,7 @@ public:
     }
     IR get_koopa() override
     {
+      
         return unaryExp->get_koopa();
     }
 };
@@ -143,13 +129,13 @@ class PrimaryExpAST:public BaseAST
                 case Val::VAR:{
                     ret.IRtype = IR::EXP;
                     ret.num = V.num;
-                    ret.store = IR::registers;
-                    IR::IR::registers++;
+                    ret.store_rid = IR::registers;
+                    IR::registers++;
                     int index=IR::curbmap->find(ident)->second.index;
                     if (index!=-1)
-                        ret.koopaIR="  %"+std::to_string(ret.store)+" = load @"+ident+"_"+std::to_string(index)+"\n";
+                        ret.koopaIR="  %"+std::to_string(ret.store_rid)+" = load @"+ident+"_"+std::to_string(index)+"\n";
                     else
-                        ret.koopaIR="  %"+std::to_string(ret.store)+" = load %"+ident+"\n";
+                        ret.koopaIR="  %"+std::to_string(ret.store_rid)+" = load %"+ident+"\n";
                     break;
                 }
                 case Val::CONST:{
@@ -198,11 +184,11 @@ public:
     }
     if (ExpIR.IRtype==IR::EXP||ExpIR.IRtype==IR::ARR)
     {
-    ret.funcrparams=ret.funcrparams+"%"+std::to_string(ExpIR.store);
+    ret.funcrparams+="%"+std::to_string(ExpIR.store_rid);
     }
     else if (ExpIR.IRtype==IR::NUM)
     {
-    ret.funcrparams=ret.funcrparams+std::to_string(ExpIR.num);
+    ret.funcrparams+=std::to_string(ExpIR.num);
     }
    
     
@@ -272,7 +258,7 @@ public:
                 default:
                     break;
                 }
-                IR::IR::registers++;
+                IR::registers++;
                 ret.koopaIR += "  %" + std::to_string(storeid);
                 switch (op[0])
                 {
@@ -293,7 +279,7 @@ public:
                 {
                     if (pre.IRtype == IR::EXP)
                     {
-                        ret.koopaIR += '%' + std::to_string(pre.store);
+                        ret.koopaIR += '%' + std::to_string(pre.store_rid);
                     }
                     else
                         ret.koopaIR += std::to_string(pre.num);
@@ -305,30 +291,30 @@ public:
                     ret.koopaIR += ", ";
                         if (pre.IRtype == IR::EXP)
                     {
-                        ret.koopaIR += '%' + std::to_string(pre.store);
+                        ret.koopaIR += '%' + std::to_string(pre.store_rid);
                     }
                     else
                         ret.koopaIR +=  std::to_string(pre.num);
                 }
                 ret.koopaIR += '\n';
                 ret.IRtype = IR::EXP;
-                ret.store = storeid;
+                ret.store_rid = storeid;
                 return ret;
             }
            
           case F1://F()
             {
                 IR ret;
-                if (IR::globalname.find(ident)!=IR::globalname.end())
+                if (IR::functype_map.find(ident)!=IR::functype_map.end())
                 {
-                    int glbtype=IR::globalname.find(ident)->second;
+                    int glbtype=IR::functype_map.find(ident)->second;
                     if (glbtype==2)
                     {
                         int storeid = 0;
                         storeid = IR::registers;
                         IR::registers++;
                         ret.IRtype=IR::EXP;
-                        ret.store=storeid;
+                        ret.store_rid=storeid;
                         ret.koopaIR="  %"+std::to_string(storeid)+" = call @"+ident+"()\n";
                     }
                     else
@@ -343,21 +329,21 @@ public:
                 IR ret;
                 IR paramsIR=funcRParams->get_koopa();
                 ret.koopaIR=paramsIR.koopaIR;
-                if (IR::globalname.find(ident)!=IR::globalname.end())
+                if (IR::functype_map.find(ident)!=IR::functype_map.end())
                 {
-                    int glbtype=IR::globalname.find(ident)->second;
+                    int glbtype=IR::functype_map.find(ident)->second;
                     if (glbtype==2)
                     {
                         int storeid = 0;
                         storeid = IR::registers;
                         IR::registers++;
                         ret.IRtype=IR::EXP;
-                        ret.store=storeid;
-                        ret.koopaIR=ret.koopaIR+"  %"+std::to_string(storeid)+" = call @"+ident+"("+paramsIR.funcrparams+")\n";
+                        ret.store_rid=storeid;
+                        ret.koopaIR+="  %"+std::to_string(storeid)+" = call @"+ident+"("+paramsIR.funcrparams+")\n";
                     }
                     else
                     {
-                    ret.koopaIR=ret.koopaIR+"  call @"+ident+"("+paramsIR.funcrparams+")\n";
+                    ret.koopaIR+="  call @"+ident+"("+paramsIR.funcrparams+")\n";
                     }
                 } 
                 return ret;
@@ -405,7 +391,7 @@ public:
             ret.koopaIR += r.koopaIR;
             int storeid = 0;
             storeid = IR::registers;
-            IR::IR::registers++;
+            IR::registers++;
             ret.koopaIR = ret.koopaIR + "  %" + std::to_string(storeid);
             if (op == "*")
             {
@@ -417,20 +403,20 @@ public:
                 ret.koopaIR += " = mod ";
             if (l.IRtype == IR::EXP)
             {
-                ret.koopaIR = ret.koopaIR + '%' + std::to_string(l.store);
+                ret.koopaIR = ret.koopaIR + '%' + std::to_string(l.store_rid);
             }
             else
                 ret.koopaIR = ret.koopaIR + std::to_string(l.num);
             ret.koopaIR += ", ";
             if (r.IRtype == IR::EXP)
             {
-                ret.koopaIR = ret.koopaIR + '%' + std::to_string(r.store);
+                ret.koopaIR = ret.koopaIR + '%' + std::to_string(r.store_rid);
             }
             else
                 ret.koopaIR = ret.koopaIR + std::to_string(r.num);
             ret.koopaIR += '\n';
             ret.IRtype = IR::EXP;
-            ret.store = storeid;
+            ret.store_rid = storeid;
             if (op=="*")
             {
             ret.num=l.num*r.num;
@@ -486,7 +472,7 @@ public:
             ret.koopaIR=l.koopaIR;
             ret.koopaIR+=r.koopaIR;
             int storeid =IR::registers;
-        IR::IR::registers++;
+        IR::registers++;
         ret.koopaIR = ret.koopaIR + "  %" + std::to_string(storeid);
         if (op == "+")
         {
@@ -496,20 +482,20 @@ public:
             ret.koopaIR += " = sub ";
         if (l.IRtype == IR::EXP)
         {
-            ret.koopaIR = ret.koopaIR + '%' + std::to_string(l.store);
+            ret.koopaIR = ret.koopaIR + '%' + std::to_string(l.store_rid);
         }
         else
             ret.koopaIR = ret.koopaIR + std::to_string(l.num);
         ret.koopaIR += ", ";
         if (r.IRtype == IR::EXP)
         {
-            ret.koopaIR = ret.koopaIR + '%' + std::to_string(r.store);
+            ret.koopaIR = ret.koopaIR + '%' + std::to_string(r.store_rid);
         }
         else
             ret.koopaIR = ret.koopaIR + std::to_string(r.num);
         ret.koopaIR += '\n';
         ret.IRtype = IR::EXP;
-        ret.store = storeid;
+        ret.store_rid = storeid;
         if (op=="+")
         {
             ret.num=l.num+r.num;
@@ -560,7 +546,7 @@ public:
             ret.koopaIR += r.koopaIR;
             int storeid = 0;
             storeid = IR::registers;
-            IR::IR::registers++;
+            IR::registers++;
             ret.koopaIR = ret.koopaIR + "  %" + std::to_string(storeid);
             if (op == "<=")
             {
@@ -574,20 +560,20 @@ public:
                 ret.koopaIR += " = gt ";
             if (l.IRtype == IR::EXP)
             {
-                ret.koopaIR = ret.koopaIR + '%' + std::to_string(l.store);
+                ret.koopaIR = ret.koopaIR + '%' + std::to_string(l.store_rid);
             }
             else
                 ret.koopaIR = ret.koopaIR + std::to_string(l.num);
             ret.koopaIR += ", ";
             if (r.IRtype == IR::EXP)
             {
-                ret.koopaIR = ret.koopaIR + '%' + std::to_string(r.store);
+                ret.koopaIR = ret.koopaIR + '%' + std::to_string(r.store_rid);
             }
             else
                 ret.koopaIR = ret.koopaIR + std::to_string(r.num);
             ret.koopaIR += '\n';
             ret.IRtype = IR::EXP;
-            ret.store = storeid;
+            ret.store_rid = storeid;
             if (op == "<=")
             {
                 ret.num = l.num<=r.num;
@@ -641,7 +627,7 @@ public:
             ret.koopaIR += r.koopaIR;
             int storeid = 0;
             storeid = IR::registers;
-            IR::IR::registers++;
+            IR::registers++;
             ret.koopaIR = ret.koopaIR + "  %" + std::to_string(storeid);
             if (op == "==")
             {
@@ -651,20 +637,20 @@ public:
                 ret.koopaIR += " = ne ";
             if (l.IRtype == IR::EXP)
             {
-                ret.koopaIR = ret.koopaIR + '%' + std::to_string(l.store);
+                ret.koopaIR = ret.koopaIR + '%' + std::to_string(l.store_rid);
             }
             else
                 ret.koopaIR = ret.koopaIR + std::to_string(l.num);
             ret.koopaIR += ", ";
             if (r.IRtype == IR::EXP)
             {
-                ret.koopaIR = ret.koopaIR + '%' + std::to_string(r.store);
+                ret.koopaIR = ret.koopaIR + '%' + std::to_string(r.store_rid);
             }
             else
                 ret.koopaIR = ret.koopaIR + std::to_string(r.num);
             ret.koopaIR += '\n';
             ret.IRtype = IR::EXP;
-            ret.store = storeid;
+            ret.store_rid = storeid;
             if (op=="==")
             {
                 ret.num=l.num==r.num;
@@ -716,36 +702,36 @@ public:
             int storeid = 0;
             int lid, rid;
             lid = IR::registers;
-            IR::IR::registers++;
+            IR::registers++;
             ret.koopaIR = ret.koopaIR + "  %" + std::to_string(lid) + " = ne ";
             ret.koopaIR = ret.koopaIR + std::to_string(0) + ", ";
             if (l.IRtype == IR::EXP)
             {
-                ret.koopaIR = ret.koopaIR + '%' + std::to_string(l.store);
+                ret.koopaIR = ret.koopaIR + '%' + std::to_string(l.store_rid);
             }
             else
                 ret.koopaIR = ret.koopaIR + std::to_string(l.num);
             ret.koopaIR += '\n';
             rid = IR::registers;
-            IR::IR::registers++;
+            IR::registers++;
             ret.koopaIR = ret.koopaIR + "  %" + std::to_string(rid) + " = ne ";
             ret.koopaIR = ret.koopaIR + std::to_string(0) + ", ";
             if (r.IRtype == IR::EXP)
             {
-                ret.koopaIR = ret.koopaIR + '%' + std::to_string(r.store);
+                ret.koopaIR = ret.koopaIR + '%' + std::to_string(r.store_rid);
             }
             else
                 ret.koopaIR = ret.koopaIR + std::to_string(r.num);
             ret.koopaIR += '\n';
             storeid = IR::registers;
-            IR::IR::registers++;
+            IR::registers++;
             ret.koopaIR = ret.koopaIR + "  %" + std::to_string(storeid) + " = and ";
             ret.koopaIR = ret.koopaIR + '%' + std::to_string(lid);
             ret.koopaIR += ", ";
             ret.koopaIR = ret.koopaIR + '%' + std::to_string(rid);
             ret.koopaIR += '\n';
             ret.IRtype = IR::EXP;
-            ret.store = storeid;
+            ret.store_rid = storeid;
             ret.num=l.num&&r.num;
             return ret;
         }
@@ -791,36 +777,36 @@ class LOrExpAST : public BaseAST
             int storeid = 0;
             int lid, rid;
             lid = IR::registers;
-            IR::IR::registers++;
+            IR::registers++;
             ret.koopaIR = ret.koopaIR + "  %" + std::to_string(lid) + " = ne ";
             ret.koopaIR = ret.koopaIR + std::to_string(0) + ", ";
             if (l.IRtype == IR::EXP)
             {
-                ret.koopaIR = ret.koopaIR + '%' + std::to_string(l.store);
+                ret.koopaIR = ret.koopaIR + '%' + std::to_string(l.store_rid);
             }
             else
                 ret.koopaIR = ret.koopaIR + std::to_string(l.num);
             ret.koopaIR += '\n';
             rid = IR::registers;
-            IR::IR::registers++;
+            IR::registers++;
             ret.koopaIR = ret.koopaIR + "  %" + std::to_string(rid) + " = ne ";
             ret.koopaIR = ret.koopaIR + std::to_string(0) + ", ";
             if (r.IRtype == IR::EXP)
             {
-                ret.koopaIR = ret.koopaIR + '%' + std::to_string(r.store);
+                ret.koopaIR = ret.koopaIR + '%' + std::to_string(r.store_rid);
             }
             else
                 ret.koopaIR = ret.koopaIR + std::to_string(r.num);
             ret.koopaIR += '\n';
             storeid = IR::registers;
-            IR::IR::registers++;
+            IR::registers++;
             ret.koopaIR = ret.koopaIR + "  %" + std::to_string(storeid) + " = or ";
             ret.koopaIR = ret.koopaIR + '%' + std::to_string(lid);
             ret.koopaIR += ", ";
             ret.koopaIR = ret.koopaIR + '%' + std::to_string(rid);
             ret.koopaIR += '\n';
             ret.IRtype = IR::EXP;
-            ret.store = storeid;
+            ret.store_rid = storeid;
             ret.num=l.num||r.num;
             return ret;
         }

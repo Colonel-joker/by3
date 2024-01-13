@@ -12,7 +12,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include "ast/ast.hpp"
 
 // 声明 lexer 函数和错误处理函数
@@ -22,21 +22,14 @@ void yyerror( std::unique_ptr<BaseAST>  &ast, const char *s);
 using namespace std;
 int IR::registers=0;
 int IR::constdefing=0;
-
 int IR::blocks=0;
 int IR::uselessblocks=0;
-
 int IR::globaldef=0;
-int IR::while_end=-1;
-int IR::while_cond=-1;
-string IR::var_name="";
 int IR::blockreturn=0;
-
-whileinfo wi=whileinfo();
-whileinfo* IR::curwi=&wi;
-map<string,int> IR::constmap;
-map<string,int> IR::globalname;
-
+while_node wn=while_node();
+while_node* IR::curwlist=&wn;
+unordered_map<string,int> IR::constmap;
+unordered_map<string,int> IR::functype_map;
 blockmap bmap=blockmap();
 blockmap* IR::curbmap=&bmap;
 %}

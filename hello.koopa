@@ -1,40 +1,19 @@
+decl @getint(): i32
+decl @getch(): i32
+decl @getarray(*i32): i32
+decl @putint(i32)
+decl @putch(i32)
+decl @putarray(i32, *i32)
+decl @starttime()
+decl @stoptime()
 
-  .text
-  .globl getint
-getint:
-
-  .text
-  .globl getch
-getch:
-
-  .text
-  .globl getarray
-getarray:
-
-  .text
-  .globl putint
-putint:
-
-  .text
-  .globl putch
-putch:
-
-  .text
-  .globl putarray
-putarray:
-
-  .text
-  .globl starttime
-starttime:
-
-  .text
-  .globl stoptime
-stoptime:
-
-  .text
-  .globl main
-main:
-entry:
-  li	a0, 0
-  ret
-
+global @x_0 = alloc i32, zeroinit
+fun @main(): i32 {
+%entry:
+  @r_1 = alloc i32
+  %0 = load @x_0
+  %1 = add 1, %0
+  store %1, @r_1
+  %2 = load @r_1
+  ret %2
+}
