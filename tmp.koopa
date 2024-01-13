@@ -1,10 +1,71 @@
 fun @main(): i32 {
 %entry:
-  @x_1 = alloc i32
-  store 10, @x_1
-  %0 = load @x_1
+  @a_1 = alloc i32
+  store 0, @a_1
+  @b_1 = alloc i32
+  %0 = load @a_1
   %1 = add %0, 1
-  store %1, @x_1
-  %2 = load @x_1
-  ret %2
+  store %1, @b_1
+  @c_1 = alloc i32
+  %2 = load @b_1
+  %3 = add %2, 1
+  store %3, @c_1
+  @d_1 = alloc i32
+  %4 = load @c_1
+  %5 = add %4, 1
+  store %5, @d_1
+  @e_1 = alloc i32
+  %6 = load @d_1
+  %7 = add %6, 1
+  store %7, @e_1
+  @f_1 = alloc i32
+  %8 = load @e_1
+  %9 = add %8, 1
+  store %9, @f_1
+  @g_1 = alloc i32
+  %10 = load @f_1
+  %11 = add %10, 1
+  store %11, @g_1
+  @h_1 = alloc i32
+  %12 = load @g_1
+  %13 = add %12, 1
+  store %13, @h_1
+  @i_1 = alloc i32
+  %14 = load @h_1
+  %15 = add %14, 1
+  store %15, @i_1
+  @j_1 = alloc i32
+  %16 = load @i_1
+  %17 = add %16, 1
+  store %17, @j_1
+  @k_1 = alloc i32
+  %18 = load @j_1
+  %19 = add %18, 1
+  store %19, @k_1
+  @l_1 = alloc i32
+  %20 = load @k_1
+  %21 = add %20, 1
+  store %21, @l_1
+  @m_1 = alloc i32
+  %22 = load @l_1
+  %23 = add %22, 1
+  store %23, @m_1
+  @n_1 = alloc i32
+  %24 = load @m_1
+  %25 = add %24, 1
+  store %25, @n_1
+  @o_1 = alloc i32
+  %26 = load @n_1
+  %27 = add %26, 1
+  store %27, @o_1
+  @p_1 = alloc i32
+  %28 = load @o_1
+  %29 = add %28, 1
+  store %29, @p_1
+  @q_1 = alloc i32
+  %30 = load @p_1
+  %31 = add %30, 1
+  store %31, @q_1
+  %32 = load @a_1
+  ret %32
 }

@@ -21,7 +21,6 @@ void yyerror( std::unique_ptr<BaseAST>  &ast, const char *s);
 
 using namespace std;
 int IR::registers=0;
-int IR::arraydefing=0;
 int IR::constdefing=0;
 
 int IR::blocks=0;
@@ -32,17 +31,14 @@ int IR::t_tag=0;
 int IR::f_tag=0;
 int IR::while_end=-1;
 int IR::while_cond=-1;
-int IR::array_ptr=0;
-int IR::array_block=0;
-int IR::func_array=0;
-int IR::blockreturn=0;
 string IR::var_name="";
+int IR::blockreturn=0;
+
 whileinfo wi=whileinfo();
 whileinfo* IR::curwi=&wi;
 map<string,int> IR::constmap;
 map<string,int> IR::globalname;
-vector<int> IR::arraydef; 
-vector<int> IR::asize;
+
 blockmap bmap=blockmap();
 blockmap* IR::curbmap=&bmap;
 %}
@@ -74,7 +70,7 @@ blockmap* IR::curbmap=&bmap;
 //非终结符
 %type <ast_val> FuncDef FuncType BType Block Stmt  LVal VarDecl VarDefs VarDef ConstDef ConstDecl BlockItems BlockItem Decl ConstDefs
 %type <int_val>  Number  
-%type <ast_val> Exp PrimaryExp UnaryExp MulExp AddExp RelExp EqExp LAndExp LOrExp 
+%type <ast_val> Exp Exps PrimaryExp UnaryExp MulExp AddExp RelExp EqExp LAndExp LOrExp 
 
 %%
 //CompUnit必须写在开头！！！！！
@@ -181,9 +177,31 @@ VarDef
 
 LVal
     : IDENT {
-        $$ = new LValAST($1->c_str());
+        $$ = new LValAST($1->c_str(),0);
+
     }
+    | IDENT Exps{
+      auto exps = std::unique_ptr<BaseAST>($2);
+      $$ = new LValAST($1->c_str(),exps,1);
+    }
+
     ;
+
+Exps
+  : '[' Exp ']' {
+    auto ast = new ExpsAST();
+    ast->type=0;
+    ast->exp=std::unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+  | Exps '[' Exp ']' {
+    auto ast = new ExpsAST();
+    ast->type=1;
+    ast->exps=std::unique_ptr<BaseAST>($1);
+    ast->exp=std::unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  ;
 
 BlockItems : BlockItem {
     auto ast = new BlockItemsAST();

@@ -19,18 +19,7 @@
 //         delete var;
 //     }
 // };
-enum InstType
-{
-    ConstDecl,
-    Decl,
-    ArrayDecl,
-    Stmt,
-    Branch,
-    While,
-    Break,
-    Continue
-};
-typedef std::vector<std::pair<InstType, std::unique_ptr<BaseAST>>> InstSet;
+
 //lv4
 class BTypeAST : public BaseAST
 {
@@ -274,9 +263,9 @@ public:
         IR::curbmap->umap.emplace(ident,Val(0,ExpIR.num,0));
         ret.koopaIR="global @"+ident+"_"+std::to_string(0)+" = alloc i32, ";
         if (ExpIR.num!=0)
-        ret.koopaIR+=std::to_string(ExpIR.num);
+          ret.koopaIR+=std::to_string(ExpIR.num);
         else
-        ret.koopaIR+="zeroinit";
+          ret.koopaIR+="zeroinit";
         ret.koopaIR+="\n";
       }
       else
@@ -639,12 +628,12 @@ class StmtAST : public BaseAST {
 
         ExpIR = exp->get_koopa();
         ret.koopaIR+=ExpIR.koopaIR;
-        if (ExpIR.IRtype==IR::EXP||ExpIR.IRtype==IR::VAR)
+        if (ExpIR.IRtype==IR::EXP)
           ret.koopaIR+="  br %"+std::to_string(ExpIR.store)+", %block"+std::to_string(label_then)+", %block"+std::to_string(label_next)+"\n";
         else 
         {//加0，当成表达式处理
           int rid=IR::registers;
-          IR::registers++;
+          IR::IR::registers++;
           ret.koopaIR+="  %"+std::to_string(rid)+" = add 0, "+std::to_string(ExpIR.num)+"\n";
           ret.koopaIR+="  br %"+std::to_string(rid)+", %block"+std::to_string(label_then)+", %block"+std::to_string(label_next)+"\n";
         }
@@ -674,12 +663,12 @@ class StmtAST : public BaseAST {
 
       ExpIR = exp->get_koopa();
       ret.koopaIR+=ExpIR.koopaIR;
-      if (ExpIR.IRtype==IR::EXP||ExpIR.IRtype==IR::VAR)
+      if (ExpIR.IRtype==IR::EXP)
       ret.koopaIR+="  br %"+std::to_string(ExpIR.store)+", %block"+std::to_string(label_then)+", %block"+std::to_string(label_else)+"\n";
       else
       {
         int rid=IR::registers;
-        IR::registers++;
+        IR::IR::registers++;
         ret.koopaIR+="  %"+std::to_string(rid)+" = add 0, "+std::to_string(ExpIR.num)+"\n";
         ret.koopaIR+="  br %"+std::to_string(rid)+", %block"+std::to_string(label_then)+", %block"+std::to_string(label_else)+"\n";
       }
@@ -718,12 +707,12 @@ class StmtAST : public BaseAST {
       ret.koopaIR+="%block"+std::to_string(tabel_cond)+":\n";
       ExpIR = exp->get_koopa();
       ret.koopaIR+=ExpIR.koopaIR;
-      if (ExpIR.IRtype==IR::EXP||ExpIR.IRtype==IR::VAR)
+      if (ExpIR.IRtype==IR::EXP)
         ret.koopaIR+="  br %"+std::to_string(ExpIR.store)+", %block"+std::to_string(tabel_then)+", %block"+std::to_string(tabel_end)+"\n";
       else
       {
         int rid=IR::registers;
-        IR::registers++;
+        IR::IR::registers++;
         ret.koopaIR+="  %"+std::to_string(rid)+" = add 0, "+std::to_string(ExpIR.num)+"\n";
         ret.koopaIR+="  br %"+std::to_string(rid)+", %block"+std::to_string(tabel_then)+", %block"+std::to_string(tabel_end)+"\n";
       }
@@ -762,23 +751,5 @@ class StmtAST : public BaseAST {
     
     return ret;
   }
-  // void DumpAST() const override {
-  //   std::cout << "StmtAST { ";
-  //   exp->DumpAST();
-  //   std::cout << " }";
-  // }
-};
 
-class ReturnAST : public BaseAST
-{
-public:
-    std::unique_ptr<BaseAST> ret_num;
-    ReturnAST()
-    {
-        ret_num = nullptr;
-    }
-    ReturnAST(std::unique_ptr<BaseAST> &_ret_num)
-    {
-        ret_num = std::move(_ret_num);
-    }
 };

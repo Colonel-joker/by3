@@ -43,7 +43,7 @@ void Visit(const koopa_raw_function_t &);
 void Visit(const koopa_raw_basic_block_t &);
 void Visit(const koopa_raw_value_t &);
 void Visit(const koopa_raw_return_t &);
-void Visit(const koopa_raw_integer_t &);
+//void Visit(const koopa_raw_integer_t &);
 void Visit(const koopa_raw_binary_t &);
 
 void Visit(const koopa_raw_store_t &);
@@ -212,10 +212,10 @@ void Visit(const koopa_raw_value_t &value)
     // 访问 return 指令
     Visit(kind.data.ret);
     break;
-  case KOOPA_RVT_INTEGER:
-    // 访问 integer 指令
-    Visit(kind.data.integer);
-    break;
+  // case KOOPA_RVT_INTEGER:
+  //   // 访问 integer 指令
+  //   Visit(kind.data.integer);
+  //   break;
   case KOOPA_RVT_BINARY:
     Visit(kind.data.binary);
     ret.pos=stackptr; 
@@ -277,28 +277,7 @@ void Visit(const koopa_raw_return_t &ret)
    riscv_code += "  ret\n";
 }
 
-long zeroblocks=0;
-void Visit(const koopa_raw_integer_t &minteger)
-{
-  if (minteger.value!=0)
-  {
-    if (zeroblocks>4)
-    {
-       riscv_code+="  .zero "+to_string(zeroblocks)+"\n";
-      zeroblocks=0;
-    }
-    else if (zeroblocks==4)
-    {
-       riscv_code+="  .word "+to_string(0)+"\n";
-      zeroblocks=0;
-    }
-     riscv_code+="  .word "+to_string(minteger.value)+"\n";
-  }
-  else
-  {
-    zeroblocks+=4;
-  }
-}
+
 
 void Visit(const koopa_raw_binary_t &binary)
 {
@@ -386,48 +365,48 @@ void Visit(const koopa_raw_binary_t &binary)
 
 }
 
-void Visit(const koopa_raw_store_t &mstore)
+void Visit(const koopa_raw_store_t &s)
 {
   registerptr=2;
-  if (mstore.value->kind.tag == KOOPA_RVT_INTEGER)
+  if (s.value->kind.tag == KOOPA_RVT_INTEGER)
   {
-     riscv_code += "  li\t" + registers[registerptr] + ", " + to_string(mstore.value->kind.data.integer.value) + '\n';
+     riscv_code += "  li\t" + registers[registerptr] + ", " + to_string(s.value->kind.data.integer.value) + '\n';
   
   }
   else{
-     riscv_code+=lw_cmd("t0",stackmap.find(mstore.value)->second.pos );   
+     riscv_code+=lw_cmd("t0",stackmap.find(s.value)->second.pos );   
   }
-     riscv_code += sw_cmd("t0",stackmap.find(mstore.dest)->second.pos );
+     riscv_code += sw_cmd("t0",stackmap.find(s.dest)->second.pos );
      
 }
 
-stack_value Visit(const koopa_raw_load_t &mload)
+stack_value Visit(const koopa_raw_load_t &l)
 {
   registerptr=2;
   stack_value ret;
   ret.pos=stackptr; ret.val=0;  
 
   //局部变量
-  stack_value src=stackmap.find(mload.src)->second;
+  stack_value src=stackmap.find(l.src)->second;
   riscv_code+=lw_cmd("t0",src.pos );
   
   return ret;
 }
 
-void Visit(const koopa_raw_branch_t &mbranch)
+void Visit(const koopa_raw_branch_t &b)
 {
   registerptr=2;
-  string t_block=string(mbranch.true_bb->name+1);
-  string f_block=string(mbranch.false_bb->name+1);
-   riscv_code+=lw_cmd("t0",stackmap.find(mbranch.cond)->second.pos );
+  string t_block=string(b.true_bb->name+1);
+  string f_block=string(b.false_bb->name+1);
+   riscv_code+=lw_cmd("t0",stackmap.find(b.cond)->second.pos );
    riscv_code += "  bnez\tt0, " +t_block+"\n";
    riscv_code += "  j "+f_block+"\n";
 }
 
-void Visit(const koopa_raw_jump_t &mjump)
+void Visit(const koopa_raw_jump_t &j)
 {
   registerptr=2;
-  string j_block=string(mjump.target->name+1);
+  string j_block=string(j.target->name+1);
    riscv_code += "  j "+j_block+"\n";
 }
 
@@ -440,6 +419,7 @@ void p2(const char* str){
   koopa_program_t program;
   koopa_error_code_t kpret = koopa_parse_from_string(str, &program);
   assert(kpret == KOOPA_EC_SUCCESS); // 确保解析时没有出错
+  
   // 创建一个 raw program builder, 用来构建 raw program
   koopa_raw_program_builder_t builder = koopa_new_raw_program_builder();
   // 将 Koopa IR 程序转换为 raw program

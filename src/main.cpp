@@ -45,14 +45,8 @@ if(strcmp(mode,"-koopa")==0){
     cout<<ast->get_koopa().koopaIR ;
     fclose(stdout);
   }else if(strcmp(mode,"-riscv")==0){
-    freopen("tmp.koopa","w",stdout);
-    cout<<ast->get_koopa().koopaIR ;
-    fclose(stdout);
-    FILE *fp=fopen("tmp.koopa","r");
-    char *buf=(char *)malloc(100000);
-    fread(buf, 1, 100000, fp);
     freopen(output,"w",stdout);
-    p2(buf);
+    p2(ast->get_koopa().koopaIR.c_str());
     fclose(stdout);
   }
     return 0;

@@ -110,30 +110,21 @@ public:
       EXP,
       NUM,
       ARR,
-      VAR
+    //  VAR
    }IRtype;//类型 0 式子 1 立即数 2数组 
   static int registers;
-  static int arraydefing;
   static int constdefing;
-
-  static int blocks;//每当需要创建一个新的基本块时，IR::blocks 的值会被递增，并且用于为新的基本块生成一个唯一的标识符
   static int globaldef;
+  static int blocks;//每当需要创建一个新的基本块时，IR::blocks 的值会被递增，并且用于为新的基本块生成一个唯一的标识符
   static int uselessblocks;
   static int shortcircuit;
   static int t_tag;
   static int f_tag;
   static int while_end;
   static int while_cond;
-  static int array_ptr;
-  static int array_block;
-  static int func_array;
   static int blockreturn;
-  static std::string var_name;
-  //static whileinfo* curwi;
   static std::map<std::string, int> constmap;//常量表
   static std::map<std::string, int> globalname; //全局符号 0 常量; 1 变量; 2 int函数; 3 void函数
-  static std::vector<int> arraydef;
-  static std::vector<int> asize;
   static blockmap* curbmap;
   int store; //存储位置
   int num;   //立即数
@@ -141,12 +132,12 @@ public:
   int alreturn;//alreturn处理多个语句时快速检查代码块是否包含返回语句
   std::string koopaIR;//中间代码字符串
   std::string funcrparams;
-  std::vector<int> arrayparam;
+  static std::string var_name;
   void get_IRtype_fromVal(Val::VT v){
       switch (v)
       {
       case Val::VAR:
-        this->IRtype=VAR;
+        this->IRtype=EXP;
         break;
       case Val::CONST:
         this->IRtype=NUM;
@@ -162,9 +153,7 @@ public:
     num = 0;
     IRtype = EXP;
     koopaIR = "";
-    funcrparams="";
     alreturn = 0;
-    arrayparam=std::vector<int>();
   }
 };
 
@@ -172,12 +161,7 @@ public:
 class BaseAST {
  public:
   virtual ~BaseAST() = default;
-
   virtual IR get_koopa() = 0;
- // virtual void DumpAST() const = 0;
-  virtual int Cal() const {
-     assert(false);
-        return 0;
-  }
+ 
 };
 

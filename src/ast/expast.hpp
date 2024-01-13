@@ -13,34 +13,40 @@ class LValAST : public BaseAST
 {
   
 public:
-    enum 
-    {
-        NUM,
-        ARR
-    }type;
+    int type;
     std::string ident;
-    std::vector<std::unique_ptr<BaseAST>> idx;
-    LValAST(const char *_name) : ident(_name) 
+    std::unique_ptr<BaseAST> exps;
+    LValAST(const char *_name,int t) : ident(_name){type=0;} 
+   
+    LValAST(const char *_name, std::unique_ptr<BaseAST> &_exps,int t) : ident(_name)
     {
-        type = NUM;
-    }
-    LValAST(const char *_name, std::vector<BaseAST*> &_idx) : ident(_name)
-    {
-        type = ARR;
-        for(auto &i : _idx)
-            idx.emplace_back(i);
-            
+        exps=std::move(_exps);
+        type=1;   
     } 
     IR get_koopa()  override{
         IR ret;
         switch (type)
         {
-        case NUM:
+        case 0:
             ret.get_IRtype_fromVal(IR::curbmap->find(ident)->second.type);
             if(ret.IRtype==IR::ARR)
                 ret.num=0;
             break;
+        case 1://IDENT Exps
+        {
+            ret.IRtype = IR::ARR;
+            Val mval=IR::curbmap->find(ident)->second;
+            if (mval.index!=-1)
+                IR::var_name="@"+ident+"_"+std::to_string(mval.index);
+            else
+                IR::var_name="%"+ident;
+            IR ExpIR=exps->get_koopa();
+           
+            ret.store=ExpIR.store;
+            ret.koopaIR=ExpIR.koopaIR;
         
+
+        }
         default:
             break;
         }
@@ -48,6 +54,20 @@ public:
     }
 };
 
+
+class ExpsAST : public BaseAST
+{
+public:
+  int type;
+  std::unique_ptr<BaseAST> exps;
+  std::unique_ptr<BaseAST> exp;
+    IR get_koopa() override
+  {
+    IR ret;
+    //wait
+    return ret;
+  }
+};
 
 
 
@@ -72,9 +92,6 @@ public:
     {
         return unaryExp->get_koopa();
     }
-    // void DumpAST()const override{
-    //     unaryExp->DumpAST();
-    // }
 };
 class PrimaryExpAST:public BaseAST
 {
@@ -127,7 +144,7 @@ class PrimaryExpAST:public BaseAST
                     ret.IRtype = IR::EXP;
                     ret.num = V.num;
                     ret.store = IR::registers;
-                    IR::registers++;
+                    IR::IR::registers++;
                     int index=IR::curbmap->find(ident)->second.index;
                     if (index!=-1)
                         ret.koopaIR="  %"+std::to_string(ret.store)+" = load @"+ident+"_"+std::to_string(index)+"\n";
@@ -135,17 +152,16 @@ class PrimaryExpAST:public BaseAST
                         ret.koopaIR="  %"+std::to_string(ret.store)+" = load %"+ident+"\n";
                     break;
                 }
-                    
                 case Val::CONST:{
                     ret.IRtype = IR::NUM;
                     ret.num = V.num;
                     break;
                 }
-                default://数组
-                    IR::arraydefing=0;
-                    break;
-                }
+                default:
                 break;
+                }
+                    
+                
             }
                 
             default:
@@ -155,13 +171,8 @@ class PrimaryExpAST:public BaseAST
             return ret;
            
         }
-          int Cal() const override
-        {
-            return newexp->Cal();
-        }
-        // void DumpAST()const override{
-        //      newexp->get_koopa();
-        // }
+        
+       
 };
 
 class UnaryExpAST : public BaseAST
@@ -188,10 +199,7 @@ public:
         op = std::string(_op);
         newexp = std::move(_unary_exp);
     }
-   // UnaryExpAST(const char *_ident, std::vector<BaseAST*> &rparams) : op(_ident), funcRParams(rparams)
-   // {
-   //     type = Function;
-    //}
+   
      IR get_koopa()override
     {   
         IR ret,pre;
@@ -220,14 +228,8 @@ public:
                 break;
             }
             
-           //if(pre.IRtype){//return +2  ->ret 2        
-         //      ret.IRtype=IR::NUM;
-          //     ret.store=storeid;
-               
-          //     return ret;
-        //   }
-        //   else{//return +(-2) ->  ret 
-                IR::registers++;
+           
+                IR::IR::registers++;
                 ret.koopaIR += "  %" + std::to_string(storeid);
                 switch (op[0])
                 {
@@ -275,23 +277,6 @@ public:
     }
     
     
-     int Cal() const override
-    {
-        if (type == Primary)
-            return newexp->Cal();
-        int res = 0;
-        if (op == "+")
-            res = newexp->Cal();
-        else if (op == "-")
-            res = -newexp->Cal();
-        else if (op == "!")
-            res = !newexp->Cal();
-        return res;
-    }
-    // void DumpAST()const override
-    // {
-    //     newexp->get_koopa();
-    // }
 };
 
 class MulExpAST : public BaseAST
@@ -331,24 +316,7 @@ public:
             ret.koopaIR += r.koopaIR;
             int storeid = 0;
             storeid = IR::registers;
-            // if (l.IRtype&&r.IRtype)
-            // {
-            //     ret.IRtype = IR::NUM;
-            //     ret.store = storeid;
-            //     if (op=="*")
-            //     {
-            //     ret.num=l.num*r.num;
-            //     }
-            //     else if(op=="/"){
-            //     ret.num=l.num/r.num;
-            //     }
-            //     else
-            //     {
-            //     ret.num=l.num%r.num;
-            //     }
-            //     return ret;
-            // }
-            IR::registers++;
+            IR::IR::registers++;
             ret.koopaIR = ret.koopaIR + "  %" + std::to_string(storeid);
             if (op == "*")
             {
@@ -429,20 +397,7 @@ public:
             ret.koopaIR=l.koopaIR;
             ret.koopaIR+=r.koopaIR;
             int storeid =IR::registers;
-            // if (l.IRtype&&r.IRtype)//都不是表达式
-            //  {
-            //     ret.IRtype = 1;
-            //     ret.store = storeid;
-            //     if (op=="+")
-            //     {
-            //          ret.num=l.num+r.num;
-            //     }
-            //     else{
-            //         ret.num=l.num-r.num;
-            //     }
-            //     return ret;
-            // }
-        IR::registers++;
+        IR::IR::registers++;
         ret.koopaIR = ret.koopaIR + "  %" + std::to_string(storeid);
         if (op == "+")
         {
@@ -478,18 +433,6 @@ public:
     }
 
     
-    
-   int Cal() const override
-    {
-        if (type == Primary)
-            return leftExp->Cal();
-        int res = 0;
-        if (op == "+")
-            res = leftExp->Cal() + rightExp->Cal();
-        else if (op == "-")
-            res = leftExp->Cal() - rightExp->Cal();
-        return res;
-    }
 };
 
 class RelExpAST : public BaseAST
@@ -528,23 +471,7 @@ public:
             ret.koopaIR += r.koopaIR;
             int storeid = 0;
             storeid = IR::registers;
-            // if (l.IRtype&&r.IRtype)
-            // {
-            //     ret.IRtype = 1;
-            //     ret.store = storeid;
-            //     if (op == "<=")
-            //     {
-            //     ret.num = l.num<=r.num;
-            //     }
-            //     else if (op == ">=")
-            //     ret.num = l.num>=r.num;
-            //     else if (op == "<")
-            //     ret.num=l.num<r.num;
-            //     else
-            //     ret.num=l.num>r.num;
-            //     return ret;
-            // }
-            IR::registers++;
+            IR::IR::registers++;
             ret.koopaIR = ret.koopaIR + "  %" + std::to_string(storeid);
             if (op == "<=")
             {
@@ -582,25 +509,10 @@ public:
                 ret.num=l.num<r.num;
             else
                 ret.num=l.num>r.num;
-
             return ret;
         }
     }
-     int Cal() const override
-    {
-        if (type == Primary)
-            return leftExp->Cal();
-        int res = 0;
-        if (op == "<")
-            res = leftExp->Cal() < rightExp->Cal();
-        else if (op == "<=")
-            res = leftExp->Cal() <= rightExp->Cal();
-        else if (op == ">")
-            res = leftExp->Cal() > rightExp->Cal();
-        else if (op == ">=")
-            res = leftExp->Cal() >= rightExp->Cal();
-        return res;
-    }
+    
 };
 
 
@@ -640,21 +552,7 @@ public:
             ret.koopaIR += r.koopaIR;
             int storeid = 0;
             storeid = IR::registers;
-            // if (l.IRtype&&r.IRtype)
-            // {
-            //     ret.IRtype = 1;
-            //     ret.store = storeid;
-            //     if (op=="==")
-            //     {
-            //     ret.num=l.num==r.num;
-            //     }
-            //     else
-            //     {
-            //     ret.num=l.num!=r.num;
-            //     }
-            //     return ret;
-            // }
-            IR::registers++;
+            IR::IR::registers++;
             ret.koopaIR = ret.koopaIR + "  %" + std::to_string(storeid);
             if (op == "==")
             {
@@ -689,17 +587,7 @@ public:
         return ret;
         }
     }
-    int Cal() const override
-    {
-        if (type == Primary)
-            return leftExp->Cal();
-        int res = 0;
-        if (op == "==")
-            res = leftExp->Cal() == rightExp->Cal();
-        else if (op == "!=")
-            res = leftExp->Cal() != rightExp->Cal();
-        return res;
-    }
+   
 };
 
 class LAndExpAST : public BaseAST
@@ -739,14 +627,7 @@ public:
             int storeid = 0;
             int lid, rid;
             lid = IR::registers;
-            // if (l.IRtype&&r.IRtype)
-            // {
-            //     ret.IRtype = 1;
-            //     ret.store = storeid;
-            //     ret.num=l.num&&r.num;
-            //     return ret;
-            // }
-            IR::registers++;
+            IR::IR::registers++;
             ret.koopaIR = ret.koopaIR + "  %" + std::to_string(lid) + " = ne ";
             ret.koopaIR = ret.koopaIR + std::to_string(0) + ", ";
             if (l.IRtype == IR::EXP)
@@ -757,7 +638,7 @@ public:
                 ret.koopaIR = ret.koopaIR + std::to_string(l.num);
             ret.koopaIR += '\n';
             rid = IR::registers;
-            IR::registers++;
+            IR::IR::registers++;
             ret.koopaIR = ret.koopaIR + "  %" + std::to_string(rid) + " = ne ";
             ret.koopaIR = ret.koopaIR + std::to_string(0) + ", ";
             if (r.IRtype == IR::EXP)
@@ -768,7 +649,7 @@ public:
                 ret.koopaIR = ret.koopaIR + std::to_string(r.num);
             ret.koopaIR += '\n';
             storeid = IR::registers;
-            IR::registers++;
+            IR::IR::registers++;
             ret.koopaIR = ret.koopaIR + "  %" + std::to_string(storeid) + " = and ";
             ret.koopaIR = ret.koopaIR + '%' + std::to_string(lid);
             ret.koopaIR += ", ";
@@ -821,7 +702,7 @@ class LOrExpAST : public BaseAST
             int storeid = 0;
             int lid, rid;
             lid = IR::registers;
-            IR::registers++;
+            IR::IR::registers++;
             ret.koopaIR = ret.koopaIR + "  %" + std::to_string(lid) + " = ne ";
             ret.koopaIR = ret.koopaIR + std::to_string(0) + ", ";
             if (l.IRtype == IR::EXP)
@@ -832,7 +713,7 @@ class LOrExpAST : public BaseAST
                 ret.koopaIR = ret.koopaIR + std::to_string(l.num);
             ret.koopaIR += '\n';
             rid = IR::registers;
-            IR::registers++;
+            IR::IR::registers++;
             ret.koopaIR = ret.koopaIR + "  %" + std::to_string(rid) + " = ne ";
             ret.koopaIR = ret.koopaIR + std::to_string(0) + ", ";
             if (r.IRtype == IR::EXP)
@@ -843,7 +724,7 @@ class LOrExpAST : public BaseAST
                 ret.koopaIR = ret.koopaIR + std::to_string(r.num);
             ret.koopaIR += '\n';
             storeid = IR::registers;
-            IR::registers++;
+            IR::IR::registers++;
             ret.koopaIR = ret.koopaIR + "  %" + std::to_string(storeid) + " = or ";
             ret.koopaIR = ret.koopaIR + '%' + std::to_string(lid);
             ret.koopaIR += ", ";
