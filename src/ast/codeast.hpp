@@ -5,20 +5,33 @@
 #include "ast/base_ast.hpp"
 #include "koopa.h"
 
-// class GlobalVarDefAST : public BaseAST
-// {
-// public:
-//     std::string name;
-//     std::unique_ptr<BaseAST> exp;
+class GlobalVarDefAST : public BaseAST
+{
+public:
+    std::string name;
 
-//     GlobalVarDefAST(std::unique_ptr<BaseAST> &vardef_ast)
-//     {
-//         VarDefAST *var = dynamic_cast<VarDefAST*>(vardef_ast.release());
-//         name = var->name;
-//         exp = std::move(var->exp);
-//         delete var;
-//     }
-// };
+    std::unique_ptr<BaseAST> exp;
+
+};
+class FuncFParamAST : public BaseAST
+{
+public:
+    enum ParamType
+    {
+        Int,
+        Array
+    } type;
+    std::string name;
+    int index;
+    std::vector<std::unique_ptr<BaseAST>> sz_exp;
+
+    FuncFParamAST(ParamType _type, const char *_name, int _index) : type(_type), name(_name), index(_index) {}
+    FuncFParamAST(ParamType _type, const char *_name, int _index, std::vector<BaseAST*> &_sz_Exp) : type(_type), name(_name), index(_index)
+    {
+        for(auto e : _sz_Exp)
+            sz_exp.emplace_back(e);
+    }
+};
 
 //lv4
 class BTypeAST : public BaseAST
@@ -43,25 +56,6 @@ public:
       return ret;
     }
 };
-class FuncFParamAST : public BaseAST
-{
-public:
-    enum ParamType
-    {
-        Int,
-        Array
-    } type;
-    std::string name;
-    int index;
-    std::vector<std::unique_ptr<BaseAST>> sz_exp;
-
-    FuncFParamAST(ParamType _type, const char *_name, int _index) : type(_type), name(_name), index(_index) {}
-    FuncFParamAST(ParamType _type, const char *_name, int _index, std::vector<BaseAST*> &_sz_Exp) : type(_type), name(_name), index(_index)
-    {
-        for(auto e : _sz_Exp)
-            sz_exp.emplace_back(e);
-    }
-};
 
 class DeclAST : public BaseAST
 {
@@ -72,9 +66,9 @@ public:
    IR get_koopa() override
   {
     if (type==0)
-    return constdecl->get_koopa();
+      return constdecl->get_koopa();
     else 
-    return vardecl->get_koopa();
+      return vardecl->get_koopa();
   }
 };
 
@@ -197,6 +191,7 @@ public:
     std::string ident;
     std::unique_ptr<BaseAST> exp;
     int type;
+    VarDefAST(){}
     VarDefAST(const char *_name,int t)
         : ident(_name),type(t)
     {
@@ -290,44 +285,119 @@ public:
   }
 };
 
-// class GlobalVarDefAST : public BaseAST
-// {
-// public:
-//     std::string name;
-//     std::unique_ptr<BaseAST> exp;
-
-//     GlobalVarDefAST(std::unique_ptr<BaseAST> &vardef_ast)
-//     {
-//         VarDefAST *var = dynamic_cast<VarDefAST*>(vardef_ast.release());
-//         name = var->ident;
-//         exp = std::move(var->exp);
-//         delete var;
-//     }
-// };
-//lv3
-
-
 class CompUnitAST : public BaseAST
 {
 public:
-    std::unique_ptr<BaseAST> func_def;
+    std::unique_ptr<BaseAST> comp_units;
     IR get_koopa()  override 
     {
-        //std::cout << "CompUnitAST { ";
-        IR::registers=0;
-        return func_def->get_koopa();
-        //std::cout << " }";
+      IR ret;
+      ret.koopaIR="decl @getint(): i32\n";
+      IR::globalname.emplace("getint",2);
+      ret.koopaIR+="decl @getch(): i32\n";
+      IR::globalname.emplace("getch",2);
+      ret.koopaIR+="decl @getarray(*i32): i32\n";
+      IR::globalname.emplace("getarray",2);
+      ret.koopaIR+="decl @putint(i32)\n";
+      IR::globalname.emplace("putint",3);
+      ret.koopaIR+="decl @putch(i32)\n";
+      IR::globalname.emplace("putch",3);
+      ret.koopaIR+="decl @putarray(i32, *i32)\n";
+      IR::globalname.emplace("putarray",3);
+      ret.koopaIR+="decl @starttime()\n";
+      IR::globalname.emplace("starttime",3);
+      ret.koopaIR+="decl @stoptime()\n\n";
+      IR::globalname.emplace("stoptime",3);
+    ret.koopaIR+=comp_units->get_koopa().koopaIR;
+    return ret;
     }
 };
 
+class CompUnitsAST : public BaseAST
+{
+public:
+ 
+  int type;
+  std::unique_ptr<BaseAST> comp_units;
+  std::unique_ptr<BaseAST> global_def;
+  
+  CompUnitsAST(){}
+  CompUnitsAST(std::unique_ptr<BaseAST>&g){
+      global_def=std::move(g);
+      type=0;
+  }
+  CompUnitsAST(std::unique_ptr<BaseAST>&c,std::unique_ptr<BaseAST>&g){
+      comp_units=std::move(c);
+      global_def=std::move(g);
+      type=1;
+  }
+   IR get_koopa() override
+  {
+    if (type==0)
+    {
+      IR ret=comp_units->get_koopa();
+      IR::registers=0;
+      IR::constmap=std::map<std::string, int>();
+      IR func=global_def->get_koopa();
+      ret.koopaIR=ret.koopaIR+func.koopaIR;
+      return ret;
+    }
+    else
+    return global_def->get_koopa();
+  }
+};
+
+
+class GlobalDefAST : public BaseAST
+{
+public:
+  // 用智能指针管理对象
+  int type;
+  std::unique_ptr<BaseAST> func_def;
+  std::unique_ptr<BaseAST> decl;
+  GlobalDefAST(){}
+  IR get_koopa() override
+  {
+     if (type==0)
+    return func_def->get_koopa();
+    else
+    {
+      IR::globaldef=1;
+      IR dec=decl->get_koopa();
+      IR::globaldef=0;
+      return dec;
+    }
+    
+  }
+};
+
+
+
+class FuncParamsAST : public BaseAST
+{
+public:
+  int type;
+  std::unique_ptr<BaseAST> funcparams;
+  std::unique_ptr<BaseAST> funcparam;
+  IR get_koopa() override
+  {
+    IR ret;
+    if (type==0)
+      ret.koopaIR=funcparams->get_koopa().koopaIR+","+funcparam->get_koopa().koopaIR;
+    else
+      ret.koopaIR=funcparam->get_koopa().koopaIR;
+    return ret;
+  }
+};
 
 class FuncDefAST : public BaseAST {
  public:
   std::unique_ptr<BaseAST> func_type;
   std::string ident;
   std::unique_ptr<BaseAST> block;
-  std::unique_ptr<BaseAST> func_para;
+  std::unique_ptr<BaseAST> func_params;
   blockmap bmap;
+  int type;  
   FuncDefAST(){}
   IR get_koopa()  override {
     bmap.umap=std::map<std::string, Val>();
@@ -336,9 +406,19 @@ class FuncDefAST : public BaseAST {
 
     IR ret=func_type->get_koopa();
     std::string ftype =ret.koopaIR;
-    ret.koopaIR= "fun @" + ident +"(): ";
-    if(ftype=="int")
-      ret.koopaIR += "i32";
+    ret.koopaIR= "fun @" + ident +"(";
+    if (type==1)
+    {
+      ret.koopaIR=ret.koopaIR+func_params->get_koopa().koopaIR;
+    }
+    ret.koopaIR += ")";
+    if (ftype == "int")
+    {
+      ret.koopaIR += ": i32";
+      IR::globalname.emplace(ident,2);
+    }
+    else
+      IR::globalname.emplace(ident,3);
     ret.koopaIR += " {\n";
     ret.koopaIR += "%entry:\n";
      std::map<std::string, Val>::iterator it;
@@ -385,21 +465,30 @@ class FuncDefAST : public BaseAST {
     return ret;
 
   }
-  // void DumpAST() const override {
-  //   std::cout << "FuncDefAST { ";
-  //   func_type->DumpAST();
-  //   std::cout << ", " << ident << ", ";
-  //   block->DumpAST();
-  //   std::cout << " }";
-  // }
+ 
 };
 
-
-  // void DumpAST() const override {
-  //   std::cout << "BTypeAST { ";
-  //   std::cout << type;
-  //   std::cout << " }";
-  // }
+class FuncParamAST : public BaseAST
+{
+public:
+  int type;
+  std::string ident;
+  std::unique_ptr<BaseAST> btype;
+  std::unique_ptr<BaseAST> exps;
+  
+  IR get_koopa() override
+  {
+    IR ret;
+    if (type==0)
+    {
+      ret.koopaIR="@"+ident+": i32";
+      IR::curbmap->umap.emplace(ident,Val(0,0,-1));
+    }
+    else if (type==1){}
+    else{}
+    return ret;
+  }
+};
 class BlockItemsAST : public BaseAST
 {
 public:
@@ -414,7 +503,7 @@ public:
       IR blksIR=blockitems->get_koopa();
       IR blkIR=blockitem->get_koopa();
       if (blkIR.alreturn==1)
-      ret.alreturn=1;
+        ret.alreturn=1;
       else
       {
         if (blkIR.alreturn==2)
@@ -620,7 +709,7 @@ class StmtAST : public BaseAST {
     case 6://IF '(' Exp ')' Stmt
       {
         ret.koopaIR="";
-        IR::shortcircuit=0;//重置短路信号
+      
         int label_then=IR::blocks;
         IR::blocks++;
         int label_next=IR::blocks;//IF 语句的下一块
@@ -637,7 +726,7 @@ class StmtAST : public BaseAST {
           ret.koopaIR+="  %"+std::to_string(rid)+" = add 0, "+std::to_string(ExpIR.num)+"\n";
           ret.koopaIR+="  br %"+std::to_string(rid)+", %block"+std::to_string(label_then)+", %block"+std::to_string(label_next)+"\n";
         }
-        IR::shortcircuit=0;
+        
         int blkr=IR::blockreturn;
         IR::blockreturn=0;
         IR tIR=true_stmt->get_koopa();
@@ -653,7 +742,7 @@ class StmtAST : public BaseAST {
     case 7://IF '(' Exp ')' Stmt ELSE Stmt
       {
         ret.koopaIR="";
-      IR::shortcircuit=0;
+      
       int label_then=IR::blocks;
       IR::blocks++;
       int label_else=IR::blocks;
@@ -672,7 +761,7 @@ class StmtAST : public BaseAST {
         ret.koopaIR+="  %"+std::to_string(rid)+" = add 0, "+std::to_string(ExpIR.num)+"\n";
         ret.koopaIR+="  br %"+std::to_string(rid)+", %block"+std::to_string(label_then)+", %block"+std::to_string(label_else)+"\n";
       }
-      IR::shortcircuit=0;
+      
       
       int blkr=IR::blockreturn;
       IR::blockreturn=0;
@@ -693,12 +782,12 @@ class StmtAST : public BaseAST {
     case 8://WHILE '(' Exp ')' Stmt
     {
        ret.koopaIR="";
-      IR::shortcircuit=0;
+     
       
       int tabel_cond=IR::blocks;
       IR::blocks++;
       int tabel_then=IR::blocks;
-      IR::t_tag=tabel_then;
+      
       IR::blocks++;
       int tabel_end=IR::blocks;
       IR::blocks++;
@@ -716,7 +805,7 @@ class StmtAST : public BaseAST {
         ret.koopaIR+="  %"+std::to_string(rid)+" = add 0, "+std::to_string(ExpIR.num)+"\n";
         ret.koopaIR+="  br %"+std::to_string(rid)+", %block"+std::to_string(tabel_then)+", %block"+std::to_string(tabel_end)+"\n";
       }
-      IR::shortcircuit=0;
+
       wi.while_cond=tabel_cond;
       wi.while_end=tabel_end;
       wi.parent=IR::curwi;

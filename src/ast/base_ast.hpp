@@ -4,7 +4,6 @@ IRtype： 枚举类型，表示中间代码的类型，包括 EXP（表达式）
 registers： 记录中间代码中使用的寄存器数量。
 constmap： std::map，用于管理常量表，记录常量的标识符及其索引。
 globalname： std::map，用于管理全局符号表，记录全局符号的类型（常量、变量、int函数、void函数）。
-arraydef： std::vector，用于记录数组的维度信息。
 asize： std::vector，用于记录数组的大小信息。
 curbmap： 指向 blockmap 类型的指针，用于表示当前块（作用域）的符号表。
 store： 存储位置，用于记录中间代码中的存储位置。
@@ -12,8 +11,8 @@ num： 立即数，用于记录中间代码中的数字值。
 alreturn： 标记当前块中是否存在返回语句。
 koopaIR： 字符串，用于存储生成的目标代码。
 funcrparams： 字符串，用于存储函数调用时的参数信息。
-arrayparam： std::vector，用于存储数组参数的信息。
 IR::constdefing 为 1，表示当前正在处理常量定义
+
 */
 #pragma once
 
@@ -118,8 +117,6 @@ public:
   static int blocks;//每当需要创建一个新的基本块时，IR::blocks 的值会被递增，并且用于为新的基本块生成一个唯一的标识符
   static int uselessblocks;
   static int shortcircuit;
-  static int t_tag;
-  static int f_tag;
   static int while_end;
   static int while_cond;
   static int blockreturn;

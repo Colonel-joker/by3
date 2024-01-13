@@ -25,10 +25,8 @@ int IR::constdefing=0;
 
 int IR::blocks=0;
 int IR::uselessblocks=0;
-int IR::shortcircuit=0;
+
 int IR::globaldef=0;
-int IR::t_tag=0;
-int IR::f_tag=0;
 int IR::while_end=-1;
 int IR::while_cond=-1;
 string IR::var_name="";
@@ -68,29 +66,59 @@ blockmap* IR::curbmap=&bmap;
 
 
 //非终结符
-%type <ast_val> FuncDef FuncType BType Block Stmt  LVal VarDecl VarDefs VarDef ConstDef ConstDecl BlockItems BlockItem Decl ConstDefs
+%type <ast_val> FuncDef  FuncType Block Stmt  LVal VarDecl VarDefs VarDef ConstDef ConstDecl BlockItems BlockItem Decl ConstDefs
 %type <int_val>  Number  
 %type <ast_val> Exp Exps PrimaryExp UnaryExp MulExp AddExp RelExp EqExp LAndExp LOrExp 
-
+%type <ast_val> CompUnits FuncParams FuncParam FuncRParams GlobalDef
 %%
 //CompUnit必须写在开头！！！！！
+
 CompUnit
-  : FuncDef {
+  : CompUnits {
     auto comp_unit = make_unique<CompUnitAST>();
-    comp_unit->func_def = unique_ptr<BaseAST>($1);
+    comp_unit->comp_units = unique_ptr<BaseAST>($1);
     ast = move(comp_unit);
+  }
+;
+CompUnits
+  : GlobalDef{
+    auto ast = new CompUnitsAST();
+    ast->type = 1;
+    ast->global_def = unique_ptr<BaseAST>($1);
+    $$=ast;
+  }
+  | CompUnits GlobalDef   {
+    auto ast = new CompUnitsAST();
+    ast->type = 0;
+    ast->comp_units = unique_ptr<BaseAST>($1);
+    ast->global_def = unique_ptr<BaseAST>($2);
+    $$=ast;
+  }
+  ;
+GlobalDef
+  : Decl{
+    auto ast = new GlobalDefAST();
+    ast->type=1;
+    ast->decl = unique_ptr<BaseAST>($1);
+    $$=ast;
+  }
+  | FuncDef{
+    auto ast = new GlobalDefAST();
+    ast->type=0;
+    ast->func_def = unique_ptr<BaseAST>($1);
+    $$=ast;
   }
   ;
 
 //lv4  利用一一对应关系，funcType换成btype,ConstInitVal和constexp直接用exp
 Decl
-  : ConstDecl {
+  : 
+  ConstDecl {
     auto ast = new DeclAST();
     ast->type=0;
     ast->constdecl = std::unique_ptr<BaseAST>($1);
     $$ = ast;
   }
-  ;
   | VarDecl {
     auto ast = new DeclAST();
     ast->type=1;
@@ -101,7 +129,7 @@ Decl
 
 
 ConstDecl
-  : CONST BType ConstDefs ';' {
+  : CONST FuncType ConstDefs ';' {
     auto ast = new ConstDeclAST();
     ast->btype = std::unique_ptr<BaseAST>($2);
     ast->constdefs = std::unique_ptr<BaseAST>($3);
@@ -126,8 +154,6 @@ ConstDefs : ConstDefs ',' ConstDef {
   }
   ;
 
-  
-
 
 ConstDef
     : IDENT '=' Exp {  
@@ -137,10 +163,8 @@ ConstDef
     }
     ;
 
-
-
 VarDecl
-  : BType VarDefs ';' {
+  : FuncType VarDefs ';' {
     auto ast = new VarDeclAST();
     ast->btype = std::unique_ptr<BaseAST>($1);
     ast->vardefs = std::unique_ptr<BaseAST>($2);
@@ -167,23 +191,29 @@ VarDefs
 
 
 VarDef
-    : IDENT {
-        $$=new VarDefAST($1->c_str(),0);
-    }
-    | IDENT '=' Exp {
-        auto exp = std::unique_ptr<BaseAST>($3);
-        $$=new VarDefAST($1->c_str(), exp,1);
-    }
+  : IDENT {
+    auto ast = new VarDefAST();
+    ast->type=0;
+    ast->ident = *std::unique_ptr<string>($1);
+    $$ = ast;
+  }
+  | IDENT '=' Exp {
+    auto ast = new VarDefAST();
+    ast->type=1;
+    ast->ident = *std::unique_ptr<string>($1);
+    ast->exp = std::unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
 
 LVal
     : IDENT {
         $$ = new LValAST($1->c_str(),0);
 
     }
-    | IDENT Exps{
-      auto exps = std::unique_ptr<BaseAST>($2);
-      $$ = new LValAST($1->c_str(),exps,1);
-    }
+    //| IDENT Exps{//数组
+   //   auto exps = std::unique_ptr<BaseAST>($2);
+   //   $$ = new LValAST($1->c_str(),exps,1);
+   // }
 
     ;
 
@@ -194,7 +224,7 @@ Exps
     ast->exp=std::unique_ptr<BaseAST>($2);
     $$ = ast;
   }
-  | Exps '[' Exp ']' {
+  | Exps '[' Exp ']' {//数组
     auto ast = new ExpsAST();
     ast->type=1;
     ast->exps=std::unique_ptr<BaseAST>($1);
@@ -232,18 +262,62 @@ BlockItem :  Decl {
     $$ = ast;
   }
   ;
-
-
-
-
-
-
 FuncDef
   : FuncType IDENT '(' ')' Block {
     auto ast = new FuncDefAST();
     ast->func_type = unique_ptr<BaseAST>($1);
     ast->ident = *unique_ptr<string>($2);
     ast->block = unique_ptr<BaseAST>($5);
+    ast->type=0;
+    $$ = ast;
+  }
+  | FuncType IDENT '(' FuncParams ')' Block {
+    auto ast = new FuncDefAST();
+    ast->type=1;
+    ast->func_type = unique_ptr<BaseAST>($1);
+    ast->ident = *unique_ptr<string>($2);
+    ast->func_params = unique_ptr<BaseAST>($4);
+    ast->block = unique_ptr<BaseAST>($6);
+    $$ = ast;
+  }
+  ;
+FuncParams
+  : FuncParams ',' FuncParam {
+    auto ast = new FuncParamsAST();
+    ast->type=0;
+    ast->funcparams=std::unique_ptr<BaseAST>($1);
+    ast->funcparam=std::unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  | FuncParam {
+    auto ast = new FuncParamsAST();
+    ast->type=1;
+    ast->funcparam=std::unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  ;
+
+FuncParam
+  : FuncType IDENT{
+    auto ast = new FuncParamAST();
+    ast->type=0;
+    ast->btype=std::unique_ptr<BaseAST>($1);
+    ast->ident=*unique_ptr<string>($2);
+    $$ = ast;
+  }
+  | FuncType IDENT '[' ']'{
+    auto ast = new FuncParamAST();
+    ast->type=1;
+    ast->btype=std::unique_ptr<BaseAST>($1);
+    ast->ident=*unique_ptr<string>($2);
+    $$ = ast;
+  }
+  | FuncType IDENT '[' ']' Exps{
+    auto ast = new FuncParamAST();
+    ast->type=2;
+    ast->btype=std::unique_ptr<BaseAST>($1);
+    ast->ident=*unique_ptr<string>($2);
+    ast->exps=std::unique_ptr<BaseAST>($5);
     $$ = ast;
   }
   ;
@@ -256,13 +330,7 @@ FuncType
     }
   ;
 
-BType
-  : INT {
-        $$ = new BTypeAST("int");
-    } | VOID {
-        $$ = new BTypeAST("void");
-    }
-  ;
+
 
 Block
   : '{' BlockItems '}' {
@@ -373,6 +441,23 @@ Number
     }
     ;
 
+
+
+FuncRParams
+  : FuncRParams ',' Exp {
+    auto ast=new FuncRParamsAST();
+    ast->type=0;
+    ast->funcrparams = std::unique_ptr<BaseAST>($1);
+    ast->exp = std::unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  | Exp {
+    auto ast=new FuncRParamsAST();
+    ast->type=1;
+    ast->exp = std::unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+
 UnaryExp
     : PrimaryExp {
         auto primary_exp = std::unique_ptr<BaseAST>($1);
@@ -392,6 +477,13 @@ UnaryExp
         string op ="+";
         auto unary_exp = std::unique_ptr<BaseAST>($2);
         $$ = new UnaryExpAST(op.c_str(), unary_exp);
+    }
+    | IDENT '(' ')'{
+    $$ = new UnaryExpAST($1->c_str());
+    }
+    | IDENT '(' FuncRParams ')'{
+      auto funcrparams = std::unique_ptr<BaseAST>($3);
+      $$ = new UnaryExpAST($1->c_str(),funcrparams,3);
     }
     ;
 
