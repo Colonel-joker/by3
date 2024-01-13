@@ -14,7 +14,7 @@ using namespace std;
 
 string  riscv_code = "";
 string registers[16] = {"a0","x0", "t0", "t1", "t2", "t3", "t4", "t5", "t6", "a1", "a2", "a3", "a4", "a5", "a6", "a7"};
-
+string funclist[8]={"@getint","@getch","@getarray","@putint","@putch","@putarray","@starttime","@stoptime"};
 long numins=0;
 bool detect_depth=0;
 long stackptr=0;
@@ -145,7 +145,17 @@ void Visit(const koopa_raw_slice_t &slice)
 // 访问函数
 void Visit(const koopa_raw_function_t &func)
 {
-  // 执行一些其他的必要操作
+  bool libfunc=0;
+    for (int i=0;i<8;i++)
+  {
+    if (func->name==funclist[i])
+    {
+      libfunc=1;
+      break;
+    }
+  }
+  if(!libfunc){
+    // 执行一些其他的必要操作
     if(detect_depth){//探测完stack深度了吗？
       riscv_code +="\n  .text\n  .globl ";
       riscv_code += (func->name+1);//@main
@@ -171,6 +181,8 @@ void Visit(const koopa_raw_function_t &func)
     }
     
     Visit(func->bbs);
+  }
+  
   
 }
 
